@@ -171,7 +171,7 @@ mod tests {
 
     #[test]
     fn test_i16() {
-        let mut a: MovAvg<i32> = MovAvg::new(5);
+        let mut a: MovAvg<i16> = MovAvg::new(5);
         assert_eq!(a.feed(10), 10 / 1);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
