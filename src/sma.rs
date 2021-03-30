@@ -13,6 +13,7 @@ use num_traits::{
     NumCast,
 };
 
+/// Internal checked-add trait for integers and floats.
 pub trait MovAvgAdd: Copy {
     fn add_chk(self, other: Self) -> Option<Self>;
 }
@@ -47,6 +48,40 @@ impl_int_add!(i8, i16, i32, i64, i128, isize,
               u8, u16, u32, u64, u128, usize);
 impl_float_add!(f32, f64);
 
+/// Simple Moving Average (SMA)
+///
+/// # Examples
+///
+/// ```
+/// use movavg::MovAvg;
+///
+/// // Integers
+/// let mut avg: MovAvg<i32> = MovAvg::new(3);
+/// assert_eq!(avg.feed(10), 10);
+/// assert_eq!(avg.feed(20), 15);
+/// assert_eq!(avg.feed(30), 20);
+/// assert_eq!(avg.feed(40), 30);
+///
+/// // Floats
+/// let mut avg: MovAvg<f64> = MovAvg::new(3);
+/// assert_eq!(avg.feed(10.0), 10.0);
+/// assert_eq!(avg.feed(20.0), 15.0);
+/// assert_eq!(avg.feed(30.0), 20.0);
+/// assert_eq!(avg.feed(40.0), 30.0);
+///
+/// // Bigger accumulator
+/// let mut avg: MovAvg<i8, i32> = MovAvg::new(3);
+/// assert_eq!(avg.feed(100), 100);
+/// assert_eq!(avg.feed(100), 100); // This would overflow an i8 accumulator
+/// ```
+///
+/// # Type Generics
+///
+/// `struct MovAvg<T, A=T>`
+///
+/// * `T` - The type of the `feed()` input value.
+/// * `A` - The type of the internal accumulator.
+///         This type must be bigger then or equal to `T`. By default this is `T`.
 pub struct MovAvg<T, A=T> {
     items:      Vec<T>,
     accu:       A,
@@ -60,6 +95,37 @@ impl<T: Num + NumCast + Copy,
      A: Num + NumCast + Copy + MovAvgAdd>
     MovAvg<T, A> {
 
+    /// Construct a new Simple Moving Average.
+    ///
+    /// The internal accumulator defaults to zero.
+    ///
+    /// * `size` - The size of the sliding window. In number of fed elements.
+    ///
+    /// # Panics
+    ///
+    /// Panics, if:
+    /// * `size` is less than 1.
+    /// * `size` is bigger than `usize::MAX - 1`.
+    pub fn new(size: usize) -> MovAvg<T, A> {
+        Self::new_init(vec![T::zero(); size], 0)
+    }
+
+    /// Construct a new Simple Moving Average and initialize its internal state.
+    ///
+    /// * `items` - Pre-initialized window buffer. Contains the window values.
+    ///             The length of this vector must be at least 1.
+    ///             The length of this vector will be the size of the sliding window.
+    ///             The initialized elements must begin at index 0.
+    /// * `nr_items` - The number of valid pre-initialized values in `items`.
+    ///                This number must be between `0..=items.len()`.
+    ///                The value of the items in `items[nr_items]` or above will be ignored.
+    ///
+    /// # Panics
+    ///
+    /// Panics, if:
+    /// * `items.len()` is less than 1.
+    /// * `nr_items` is bigger than `items.len()`.
+    /// * `items.len()` is bigger than `usize::MAX - 1`.
     pub fn new_init(items: Vec<T>,
                     nr_items: usize) -> MovAvg<T, A> {
 
@@ -85,10 +151,12 @@ impl<T: Num + NumCast + Copy,
         }
     }
 
-    pub fn new(size: usize) -> MovAvg<T, A> {
-        Self::new_init(vec![T::zero(); size], 0)
-    }
-
+    /// Try to feed a new value into the Moving Average and return the new average.
+    ///
+    /// * `value` - The new value to feed into the Moving Average.
+    ///
+    /// Returns Err, if the internal accumulator overflows, or if any other value conversion fails.
+    /// Value conversion does not fail, if the types are big enough to hold the values.
     pub fn try_feed(&mut self, value: T) -> Result<T, &str> {
         debug_assert!(self.nr_items <= self.size);
 
@@ -126,6 +194,14 @@ impl<T: Num + NumCast + Copy,
         Ok(ret)
     }
 
+    /// Feed a new value into the Moving Average and return the new average.
+    ///
+    /// * `value` - The new value to feed into the Moving Average.
+    ///
+    /// # Panics
+    ///
+    /// Panics, if the internal accumulator overflows, or if any other value conversion fails.
+    /// Value conversion does not fail, if the types are big enough to hold the values.
     pub fn feed(&mut self, value: T) -> T {
         self.try_feed(value).expect("MovAvg calculation failed.")
     }

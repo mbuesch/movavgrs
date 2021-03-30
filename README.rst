@@ -6,12 +6,29 @@ movavg - Generic Moving Average calculation
 Generic `Moving Average <https://en.wikipedia.org/wiki/Moving_average>`_ calculation for the types i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32 and f64.
 
 
-Example
-=======
+Examples
+========
 
 .. code:: rust
 
-	TODO
+	// Integers
+	let mut avg: MovAvg<i32> = MovAvg::new(3);
+	assert_eq!(avg.feed(10), 10);
+	assert_eq!(avg.feed(20), 15);
+	assert_eq!(avg.feed(30), 20);
+	assert_eq!(avg.feed(40), 30);
+
+	// Floats
+	let mut avg: MovAvg<f64> = MovAvg::new(3);
+	assert_eq!(avg.feed(10.0), 10.0);
+	assert_eq!(avg.feed(20.0), 15.0);
+	assert_eq!(avg.feed(30.0), 20.0);
+	assert_eq!(avg.feed(40.0), 30.0);
+
+	// Bigger accumulator
+	let mut avg: MovAvg<i8, i32> = MovAvg::new(3);
+	assert_eq!(avg.feed(100), 100);
+	assert_eq!(avg.feed(100), 100); // This would overflow an i8 accumulator
 
 
 License
