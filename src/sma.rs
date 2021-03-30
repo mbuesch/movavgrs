@@ -13,14 +13,14 @@ use num_traits::{
     NumCast,
 };
 
-pub trait MovingAvgAdd: Copy {
+pub trait MovAvgAdd: Copy {
     fn add_chk(self, other: Self) -> Option<Self>;
 }
 
 macro_rules! impl_int_add {
     ($($t:ty),*) => {
         $(
-            impl MovingAvgAdd for $t {
+            impl MovAvgAdd for $t {
                 #[inline]
                 fn add_chk(self, other: Self) -> Option<Self> {
                     self.checked_add(other)
@@ -33,7 +33,7 @@ macro_rules! impl_int_add {
 macro_rules! impl_float_add {
     ($($t:ty),*) => {
         $(
-            impl MovingAvgAdd for $t {
+            impl MovAvgAdd for $t {
                 #[inline]
                 fn add_chk(self, other: Self) -> Option<Self> {
                     Some(self + other)
@@ -47,7 +47,7 @@ impl_int_add!(i8, i16, i32, i64, i128, isize,
               u8, u16, u32, u64, u128, usize);
 impl_float_add!(f32, f64);
 
-pub struct MovingAvg<T, A=T> {
+pub struct MovAvg<T, A=T> {
     items:      Vec<T>,
     accu:       A,
     size:       usize,
@@ -57,11 +57,11 @@ pub struct MovingAvg<T, A=T> {
 }
 
 impl<T: Num + NumCast + Copy,
-     A: Num + NumCast + Copy + MovingAvgAdd>
-    MovingAvg<T, A> {
+     A: Num + NumCast + Copy + MovAvgAdd>
+    MovAvg<T, A> {
 
     pub fn new_init(items: Vec<T>,
-                    nr_items: usize) -> MovingAvg<T, A> {
+                    nr_items: usize) -> MovAvg<T, A> {
 
         let size = items.len();
         assert!(size > 0);
@@ -75,7 +75,7 @@ impl<T: Num + NumCast + Copy,
         let begin = 0;
         let end = nr_items % size;
 
-        MovingAvg {
+        MovAvg {
             items,
             accu,
             size,
@@ -85,7 +85,7 @@ impl<T: Num + NumCast + Copy,
         }
     }
 
-    pub fn new(size: usize) -> MovingAvg<T, A> {
+    pub fn new(size: usize) -> MovAvg<T, A> {
         Self::new_init(vec![T::zero(); size], 0)
     }
 
@@ -127,7 +127,7 @@ impl<T: Num + NumCast + Copy,
     }
 
     pub fn feed(&mut self, value: T) -> T {
-        self.try_feed(value).expect("MovingAvg calculation failed.")
+        self.try_feed(value).expect("MovAvg calculation failed.")
     }
 }
 
@@ -137,7 +137,7 @@ mod tests {
 
     #[test]
     fn test_u8() {
-        let mut a: MovingAvg<u8> = MovingAvg::new(3);
+        let mut a: MovAvg<u8> = MovAvg::new(3);
         assert_eq!(a.feed(10), 10 / 1);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
@@ -147,7 +147,7 @@ mod tests {
 
     #[test]
     fn test_i8() {
-        let mut a: MovingAvg<i8> = MovingAvg::new(5);
+        let mut a: MovAvg<i8> = MovAvg::new(5);
         assert_eq!(a.feed(10), 10 / 1);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
@@ -158,7 +158,7 @@ mod tests {
 
     #[test]
     fn test_u16() {
-        let mut a: MovingAvg<u16> = MovingAvg::new(5);
+        let mut a: MovAvg<u16> = MovAvg::new(5);
         assert_eq!(a.feed(10), 10 / 1);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
@@ -171,7 +171,7 @@ mod tests {
 
     #[test]
     fn test_i16() {
-        let mut a: MovingAvg<i32> = MovingAvg::new(5);
+        let mut a: MovAvg<i32> = MovAvg::new(5);
         assert_eq!(a.feed(10), 10 / 1);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
@@ -185,7 +185,7 @@ mod tests {
 
     #[test]
     fn test_u32() {
-        let mut a: MovingAvg<u32> = MovingAvg::new(5);
+        let mut a: MovAvg<u32> = MovAvg::new(5);
         assert_eq!(a.feed(10), 10 / 1);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
@@ -198,7 +198,7 @@ mod tests {
 
     #[test]
     fn test_i32() {
-        let mut a: MovingAvg<i32> = MovingAvg::new(5);
+        let mut a: MovAvg<i32> = MovAvg::new(5);
         assert_eq!(a.feed(10), 10 / 1);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
@@ -212,7 +212,7 @@ mod tests {
 
     #[test]
     fn test_u64() {
-        let mut a: MovingAvg<u64> = MovingAvg::new(5);
+        let mut a: MovAvg<u64> = MovAvg::new(5);
         assert_eq!(a.feed(10), 10 / 1);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
@@ -225,7 +225,7 @@ mod tests {
 
     #[test]
     fn test_i64() {
-        let mut a: MovingAvg<i64> = MovingAvg::new(5);
+        let mut a: MovAvg<i64> = MovAvg::new(5);
         assert_eq!(a.feed(10), 10 / 1);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
@@ -239,7 +239,7 @@ mod tests {
 
     #[test]
     fn test_u128() {
-        let mut a: MovingAvg<u128> = MovingAvg::new(5);
+        let mut a: MovAvg<u128> = MovAvg::new(5);
         assert_eq!(a.feed(10), 10 / 1);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
@@ -252,7 +252,7 @@ mod tests {
 
     #[test]
     fn test_i128() {
-        let mut a: MovingAvg<i128> = MovingAvg::new(5);
+        let mut a: MovAvg<i128> = MovAvg::new(5);
         assert_eq!(a.feed(10), 10 / 1);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
@@ -266,7 +266,7 @@ mod tests {
 
     #[test]
     fn test_usize() {
-        let mut a: MovingAvg<usize> = MovingAvg::new(5);
+        let mut a: MovAvg<usize> = MovAvg::new(5);
         assert_eq!(a.feed(10), 10 / 1);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
@@ -279,7 +279,7 @@ mod tests {
 
     #[test]
     fn test_isize() {
-        let mut a: MovingAvg<isize> = MovingAvg::new(5);
+        let mut a: MovAvg<isize> = MovAvg::new(5);
         assert_eq!(a.feed(10), 10 / 1);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
@@ -293,7 +293,7 @@ mod tests {
 
     #[test]
     fn test_f32() {
-        let mut a: MovingAvg<f32> = MovingAvg::new(5);
+        let mut a: MovAvg<f32> = MovAvg::new(5);
         let e = 0.001;
         assert!((a.feed(10.0) - (10.0 / 1.0)).abs() < e);
         assert!((a.feed(20.0) - ((10.0 + 20.0) / 2.0)).abs() < e);
@@ -308,7 +308,7 @@ mod tests {
 
     #[test]
     fn test_f64() {
-        let mut a: MovingAvg<f64> = MovingAvg::new(5);
+        let mut a: MovAvg<f64> = MovAvg::new(5);
         let e = 0.000001;
         assert!((a.feed(10.0) - (10.0 / 1.0)).abs() < e);
         assert!((a.feed(20.0) - ((10.0 + 20.0) / 2.0)).abs() < e);
@@ -323,7 +323,7 @@ mod tests {
 
     #[test]
     fn test_single() {
-        let mut a: MovingAvg<i32> = MovingAvg::new(1);
+        let mut a: MovAvg<i32> = MovAvg::new(1);
         assert_eq!(a.feed(10), 10);
         assert_eq!(a.feed(20), 20);
         assert_eq!(a.feed(2), 2);
@@ -332,7 +332,7 @@ mod tests {
     #[test]
     #[should_panic(expected="Accumulator type add overflow")]
     fn test_accu_overflow() {
-        let mut a: MovingAvg<u8> = MovingAvg::new(3);
+        let mut a: MovAvg<u8> = MovAvg::new(3);
         a.feed(200);
         a.feed(200);
     }
@@ -340,7 +340,7 @@ mod tests {
     #[test]
     #[should_panic(expected="Accumulator type add overflow")]
     fn test_accu_underflow() {
-        let mut a: MovingAvg<i8> = MovingAvg::new(3);
+        let mut a: MovAvg<i8> = MovAvg::new(3);
         a.feed(-100);
         a.feed(-100);
     }
