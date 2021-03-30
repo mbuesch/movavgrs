@@ -1,0 +1,19 @@
+# -*- coding: utf-8 -*-
+
+[package]
+edition         = "2018"
+name            = "movavg"
+description     = "Generic Moving Average calculation"
+version         = "1.0.0"
+authors         = ["Michael Buesch <m@bues.ch>"]
+license         = "MIT OR Apache-2.0"
+readme          = "README.md"
+repository      = "https://bues.ch/cgit/movavgrs.git"
+
+categories      = ["algorithms"]
+keywords        = ["moving", "average"]
+
+[dependencies]
+num-traits      = "0.2.0"
+
+# vim: ts=4 sw=4 expandtab
