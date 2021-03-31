@@ -21,7 +21,7 @@ Add this to your Cargo.toml:
 .. code:: toml
 
 	[dependencies]
-	movavg = 1.0
+	movavg = "1.0"
 
 Example usage:
 
