@@ -13,8 +13,17 @@ and float types
 * f32, f64
 
 
-Examples
-========
+Usage
+=====
+
+Add this to your Cargo.toml:
+
+.. code:: toml
+
+	[dependencies]
+	movavg = 1.0
+
+Example usage:
 
 .. code:: rust
 
