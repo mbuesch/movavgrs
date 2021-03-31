@@ -33,6 +33,7 @@ Example usage:
 	assert_eq!(avg.feed(20), 15);
 	assert_eq!(avg.feed(30), 20);
 	assert_eq!(avg.feed(40), 30);
+	assert_eq!(avg.get(), 30);
 
 	// Floats
 	let mut avg: MovAvg<f64> = MovAvg::new(3);
@@ -40,6 +41,7 @@ Example usage:
 	assert_eq!(avg.feed(20.0), 15.0);
 	assert_eq!(avg.feed(30.0), 20.0);
 	assert_eq!(avg.feed(40.0), 30.0);
+	assert_eq!(avg.get(), 30.0);
 
 	// Bigger accumulator
 	let mut avg: MovAvg<i8, i32> = MovAvg::new(3);

@@ -92,6 +92,7 @@ impl_float_accu!(f32, f64);
 /// assert_eq!(avg.feed(20), 15);
 /// assert_eq!(avg.feed(30), 20);
 /// assert_eq!(avg.feed(40), 30);
+/// assert_eq!(avg.get(), 30);
 ///
 /// // Floats
 /// let mut avg: MovAvg<f64> = MovAvg::new(3);
@@ -99,6 +100,7 @@ impl_float_accu!(f32, f64);
 /// assert_eq!(avg.feed(20.0), 15.0);
 /// assert_eq!(avg.feed(30.0), 20.0);
 /// assert_eq!(avg.feed(40.0), 30.0);
+/// assert_eq!(avg.get(), 30.0);
 ///
 /// // Bigger accumulator
 /// let mut avg: MovAvg<i8, i32> = MovAvg::new(3);
@@ -175,7 +177,9 @@ impl<T: Num + NumCast + Copy,
     ///
     /// * `value` - The new value to feed into the Moving Average.
     ///
-    /// Returns Err, if the internal accumulator overflows, or if any other value conversion fails.
+    /// On success, returns `Ok(T)` with the new Moving Average result.
+    ///
+    /// Returns `Err`, if the internal accumulator overflows, or if any value conversion fails.
     /// Value conversion does not fail, if the types are big enough to hold the values.
     pub fn try_feed(&mut self, value: T) -> Result<T, &str> {
         let size = self.items.len();
@@ -241,12 +245,49 @@ impl<T: Num + NumCast + Copy,
     ///
     /// * `value` - The new value to feed into the Moving Average.
     ///
+    /// Returns the new Moving Average result.
+    ///
     /// # Panics
     ///
-    /// Panics, if the internal accumulator overflows, or if any other value conversion fails.
+    /// Panics, if the internal accumulator overflows, or if any value conversion fails.
     /// Value conversion does not fail, if the types are big enough to hold the values.
     pub fn feed(&mut self, value: T) -> T {
         self.try_feed(value).expect("MovAvg calculation failed.")
+    }
+
+    /// Try to get the current Moving Average value.
+    /// This method does not modify the internal state.
+    ///
+    /// Returns `Err`, if the internal state is empty.
+    /// That is if no values have been fed into MovAvg.
+    ///
+    /// Returns `Err`, if any value conversion fails.
+    /// Value conversion does not fail, if the types are big enough to hold the values.
+    pub fn try_get(&self) -> Result<T, &str> {
+        if let Some(nr_items) = A::from(self.nr_items) {
+            if nr_items == A::zero() {
+                Err("The MovAvg state is empty.")
+            } else {
+                T::from(self.accu / nr_items)
+                    .ok_or("Failed to cast result to item type.")
+            }
+        } else {
+            Err("Failed to cast number-of-items to accumulator type.")
+        }
+    }
+
+    /// Get the current Moving Average value.
+    /// This method does not modify the internal state.
+    ///
+    /// # Panics
+    ///
+    /// Panics, if the internal state is empty.
+    /// That is if no values have been fed into MovAvg.
+    ///
+    /// Panics, if any value conversion fails.
+    /// Value conversion does not fail, if the types are big enough to hold the values.
+    pub fn get(&self) -> T {
+        self.try_get().expect("MovAvg calculation failed.")
     }
 }
 
@@ -453,7 +494,7 @@ mod tests {
     fn test_accu_overflow() {
         let mut a: MovAvg<u8> = MovAvg::new(3);
         a.feed(200);
-        a.feed(200);
+        a.feed(200); // this panics
     }
 
     #[test]
@@ -461,7 +502,7 @@ mod tests {
     fn test_accu_underflow() {
         let mut a: MovAvg<i8> = MovAvg::new(3);
         a.feed(-100);
-        a.feed(-100);
+        a.feed(-100); // this panics
     }
 
     #[test]
@@ -474,6 +515,23 @@ mod tests {
         let mut a: MovAvg<i32> = MovAvg::new_init(3, vec![10, 20]);
         assert_eq!(a.feed(102), 44);
         assert_eq!(a.feed(178), 100);
+    }
+
+    #[test]
+    fn test_get() {
+        let mut a: MovAvg<i32> = MovAvg::new_init(3, vec![10, 20]);
+        assert_eq!(a.get(), 15);
+        assert_eq!(a.feed(102), 44);
+        assert_eq!(a.get(), 44);
+        assert_eq!(a.feed(178), 100);
+        assert_eq!(a.get(), 100);
+    }
+
+    #[test]
+    #[should_panic(expected="The MovAvg state is empty")]
+    fn test_get_empty() {
+        let a: MovAvg<i32> = MovAvg::new(3);
+        assert_eq!(a.get(), 42); // this panics
     }
 }
 
