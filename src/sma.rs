@@ -13,6 +13,7 @@ use num_traits::{
 };
 
 /// Initialize the accumulator from scratch by summing up all items.
+#[inline]
 fn initialize_accu<T, A>(items: &[T]) -> Result<A, &'static str>
     where T: Num + NumCast + Copy,
           A: Num + NumCast + Copy,
@@ -53,9 +54,8 @@ macro_rules! impl_int_accu {
                                input_value: Self,
                                _items: &[T]) -> Result<Self, &'static str> {
                     // Subtract the to be removed value from the sum and add the new value.
-                    let new_accu = (self - first_value).checked_add(input_value)
-                        .ok_or("Accumulator type add overflow.")?;
-                    Ok(new_accu)
+                    (self - first_value).checked_add(input_value)
+                        .ok_or("Accumulator type add overflow.")
                 }
             }
         )*
