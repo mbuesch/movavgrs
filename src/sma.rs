@@ -30,6 +30,7 @@ fn initialize_accu<T, A>(items: &[T]) -> Result<A, &'static str>
 
 /// Internal accumulator calculation trait for integers and floats.
 /// Implemented for all possible accumulator types.
+/// `Self` is the accumulator type `A`.
 /// `T` is the SMA input value type.
 pub trait MovAvgAccu<T>: Copy {
     fn recalc_accu(self,
@@ -41,7 +42,7 @@ pub trait MovAvgAccu<T>: Copy {
 macro_rules! impl_int_accu {
     ($($t:ty),*) => {
         $(
-            impl<T: Num + NumCast + Copy> MovAvgAccu<T> for $t {
+            impl<T> MovAvgAccu<T> for $t {
                 #[inline]
                 fn recalc_accu(self,
                                first_value: Self,
@@ -181,19 +182,18 @@ impl<T: Num + NumCast + Copy,
 
         // Get the first element from the moving window state.
         let first_value = if self.nr_items >= size {
-            self.items[self.index]
+            A::from(self.items[self.index])
+                .ok_or("Failed to cast first value to accumulator type.")?
         } else {
-            T::zero()
+            A::zero()
         };
 
-        let a_first_value = A::from(first_value)
-            .ok_or("Failed to cast first value to accumulator type.")?;
         let a_value = A::from(value)
             .ok_or("Failed to cast value to accumulator type.")?;
 
         // Calculate the new moving window state fill state.
         let new_nr_items = if self.nr_items >= size {
-            self.nr_items
+            self.nr_items // Already fully populated.
         } else {
             self.nr_items + 1
         };
@@ -206,7 +206,7 @@ impl<T: Num + NumCast + Copy,
         self.items[self.index] = value;
 
         // Recalculate the accumulator.
-        match self.accu.recalc_accu(a_first_value,
+        match self.accu.recalc_accu(first_value,
                                     a_value,
                                     &self.items[0..new_nr_items]) {
             Ok(new_accu) => {
@@ -217,6 +217,8 @@ impl<T: Num + NumCast + Copy,
                         self.nr_items = new_nr_items;
                         self.index = (self.index + 1) % size;
                         self.accu = new_accu;
+
+                        // Return the end result.
                         Ok(avg)
                     },
                     None => {
