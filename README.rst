@@ -3,7 +3,14 @@ movavg - Generic Moving Average calculation
 
 `https://bues.ch/ <https://bues.ch/>`_
 
-Generic `Moving Average <https://en.wikipedia.org/wiki/Moving_average>`_ calculation for the types i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32 and f64.
+Generic `Moving Average <https://en.wikipedia.org/wiki/Moving_average>`_ calculation for the integer types
+
+* i8, i16, i32, i64, i128, isize
+* u8, u16, u32, u64, u128, usize
+
+and float types
+
+* f32, f64
 
 
 Examples
@@ -12,7 +19,7 @@ Examples
 .. code:: rust
 
 	// Integers
-	let mut avg: MovAvg<i32> = MovAvg::new(3);
+	let mut avg: MovAvg<i32> = MovAvg::new(3); // window size = 3
 	assert_eq!(avg.feed(10), 10);
 	assert_eq!(avg.feed(20), 15);
 	assert_eq!(avg.feed(30), 20);

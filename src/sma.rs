@@ -86,7 +86,7 @@ impl_float_accu!(f32, f64);
 /// use movavg::MovAvg;
 ///
 /// // Integers
-/// let mut avg: MovAvg<i32> = MovAvg::new(3);
+/// let mut avg: MovAvg<i32> = MovAvg::new(3); // window size = 3
 /// assert_eq!(avg.feed(10), 10);
 /// assert_eq!(avg.feed(20), 15);
 /// assert_eq!(avg.feed(30), 20);
