@@ -29,8 +29,12 @@ fn initialize_accu<T, A>(items: &[T]) -> Result<A, &'static str>
 }
 
 /// Internal accumulator calculation trait for integers and floats.
-/// Implemented for all possible accumulator types.
+///
+/// This usually does *not* have to be implemented by the library user.
+/// The `movavg` crate implements this trait for all core integers and floats.
+///
 /// `Self` is the accumulator type `A`.
+///
 /// `T` is the SMA input value type.
 pub trait MovAvgAccu<T>: Copy {
     fn recalc_accu(self,

@@ -9,6 +9,9 @@
 
 mod sma;
 
-pub use sma::MovAvg;
+pub use sma::{
+    MovAvg,
+    MovAvgAccu,
+};
 
 // vim: ts=4 sw=4 expandtab
