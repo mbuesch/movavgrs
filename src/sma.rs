@@ -7,7 +7,6 @@
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 //
 
-use std::cmp::min;
 use num_traits::{
     Num,
     NumCast,
@@ -81,14 +80,13 @@ impl_float_add!(f32, f64);
 ///
 /// * `T` - The type of the `feed()` input value.
 /// * `A` - The type of the internal accumulator.
-///         This type must be bigger then or equal to `T`. By default this is `T`.
+///         This type must be bigger then or equal to `T`.
+///         By default this is the same type as `T`.
 pub struct MovAvg<T, A=T> {
     items:      Vec<T>,
     accu:       A,
-    size:       usize,
     nr_items:   usize,
-    begin:      usize,
-    end:        usize,
+    index:      usize,
 }
 
 impl<T: Num + NumCast + Copy,
@@ -105,7 +103,6 @@ impl<T: Num + NumCast + Copy,
     ///
     /// Panics, if:
     /// * `size` is less than 1.
-    /// * `size` is bigger than `usize::MAX - 1`.
     pub fn new(size: usize) -> MovAvg<T, A> {
         Self::new_init(vec![T::zero(); size], 0)
     }
@@ -125,29 +122,22 @@ impl<T: Num + NumCast + Copy,
     /// Panics, if:
     /// * `items.len()` is less than 1.
     /// * `nr_items` is bigger than `items.len()`.
-    /// * `items.len()` is bigger than `usize::MAX - 1`.
     pub fn new_init(items: Vec<T>,
                     nr_items: usize) -> MovAvg<T, A> {
 
         let size = items.len();
         assert!(size > 0);
         assert!(nr_items <= size);
-        // Avoid overflow on temporary nr_items incrementation.
-        assert!(size <= usize::MAX - 1);
 
+        // Initialize the accumulator by summing up all items.
         let accu = items.iter().fold(A::zero(),
             |acc, x| acc + A::from(*x).expect("Failed to cast value to accumulator type."));
-
-        let begin = 0;
-        let end = nr_items % size;
 
         MovAvg {
             items,
             accu,
-            size,
             nr_items,
-            begin,
-            end,
+            index: 0,
         }
     }
 
@@ -158,11 +148,12 @@ impl<T: Num + NumCast + Copy,
     /// Returns Err, if the internal accumulator overflows, or if any other value conversion fails.
     /// Value conversion does not fail, if the types are big enough to hold the values.
     pub fn try_feed(&mut self, value: T) -> Result<T, &str> {
-        debug_assert!(self.nr_items <= self.size);
+        let size = self.items.len();
+        debug_assert!(self.nr_items <= size);
 
         // Get the first element from the moving window state.
-        let first_value = if self.nr_items >= self.size {
-            self.items[self.begin]
+        let first_value = if self.nr_items >= size {
+            self.items[self.index]
         } else {
             T::zero()
         };
@@ -175,7 +166,11 @@ impl<T: Num + NumCast + Copy,
         // Subtract the to be removed value from the sum and add the new value.
         let new_accu = (self.accu - a_first_value).add_chk(a_value)
             .ok_or("Accumulator type add overflow.")?;
-        let new_nr_items = min(self.nr_items + 1, self.size);
+        let new_nr_items = if self.nr_items >= size {
+            self.nr_items
+        } else {
+            self.nr_items + 1
+        };
         let a_nr_items = A::from(new_nr_items)
             .ok_or("Failed to cast number-of-items to accumulator type.")?;
 
@@ -185,10 +180,9 @@ impl<T: Num + NumCast + Copy,
             .ok_or("Failed to cast result to item type.")?;
 
         // Append the new value to the list and update the moving window state.
-        self.items[self.end] = value;
+        self.items[self.index] = value;
         self.nr_items = new_nr_items;
-        self.end = (self.end + 1) % self.size;
-        self.begin = (self.begin + 1) % self.size;
+        self.index = (self.index + 1) % size;
         self.accu = new_accu;
 
         Ok(ret)
