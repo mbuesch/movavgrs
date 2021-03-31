@@ -12,40 +12,71 @@ use num_traits::{
     NumCast,
 };
 
-/// Internal checked-add trait for integers and floats.
-pub trait MovAvgAdd: Copy {
-    fn add_chk(self, other: Self) -> Option<Self>;
+/// Initialize the accumulator from scratch by summing up all items.
+fn initialize_accu<T, A>(items: &[T]) -> Result<A, &'static str>
+    where T: Num + NumCast + Copy,
+          A: Num + NumCast + Copy,
+{
+    items.iter().fold(
+        Ok(A::zero()),
+        |acc, x| {
+            match acc {
+                Ok(acc) => Ok(acc + A::from(*x).ok_or("Failed to cast value to accumulator type.")?),
+                Err(e) => Err(e),
+            }
+        }
+    )
 }
 
-macro_rules! impl_int_add {
+/// Internal accumulator calculation trait for integers and floats.
+/// Implemented for all possible accumulator types.
+/// `T` is the SMA input value type.
+pub trait MovAvgAccu<T>: Copy {
+    fn recalc_accu(self,
+                   first_value: Self,
+                   input_value: Self,
+                   items: &[T]) -> Result<Self, &'static str>;
+}
+
+macro_rules! impl_int_accu {
     ($($t:ty),*) => {
         $(
-            impl MovAvgAdd for $t {
+            impl<T: Num + NumCast + Copy> MovAvgAccu<T> for $t {
                 #[inline]
-                fn add_chk(self, other: Self) -> Option<Self> {
-                    self.checked_add(other)
+                fn recalc_accu(self,
+                               first_value: Self,
+                               input_value: Self,
+                               _items: &[T]) -> Result<Self, &'static str> {
+                    // Subtract the to be removed value from the sum and add the new value.
+                    let new_accu = (self - first_value).checked_add(input_value)
+                        .ok_or("Accumulator type add overflow.")?;
+                    Ok(new_accu)
                 }
             }
         )*
     }
 }
 
-macro_rules! impl_float_add {
+macro_rules! impl_float_accu {
     ($($t:ty),*) => {
         $(
-            impl MovAvgAdd for $t {
+            impl<T: Num + NumCast + Copy> MovAvgAccu<T> for $t {
                 #[inline]
-                fn add_chk(self, other: Self) -> Option<Self> {
-                    Some(self + other)
+                fn recalc_accu(self,
+                               _first_value: Self,
+                               _input_value: Self,
+                               items: &[T]) -> Result<Self, &'static str> {
+                    // Recalculate the accumulator from scratch.
+                    initialize_accu(items)
                 }
             }
         )*
     }
 }
 
-impl_int_add!(i8, i16, i32, i64, i128, isize,
-              u8, u16, u32, u64, u128, usize);
-impl_float_add!(f32, f64);
+impl_int_accu!(i8, i16, i32, i64, i128, isize,
+               u8, u16, u32, u64, u128, usize);
+impl_float_accu!(f32, f64);
 
 /// Simple Moving Average (SMA)
 ///
@@ -90,7 +121,7 @@ pub struct MovAvg<T, A=T> {
 }
 
 impl<T: Num + NumCast + Copy,
-     A: Num + NumCast + Copy + MovAvgAdd>
+     A: Num + NumCast + Copy + MovAvgAccu<T>>
     MovAvg<T, A> {
 
     /// Construct a new Simple Moving Average.
@@ -129,9 +160,8 @@ impl<T: Num + NumCast + Copy,
         assert!(size > 0);
         assert!(nr_items <= size);
 
-        // Initialize the accumulator by summing up all items.
-        let accu = items.iter().fold(A::zero(),
-            |acc, x| acc + A::from(*x).expect("Failed to cast value to accumulator type."));
+        let accu = initialize_accu(&items)
+            .expect("Failed to initialize the accumulator.");
 
         MovAvg {
             items,
@@ -163,9 +193,7 @@ impl<T: Num + NumCast + Copy,
         let a_value = A::from(value)
             .ok_or("Failed to cast value to accumulator type.")?;
 
-        // Subtract the to be removed value from the sum and add the new value.
-        let new_accu = (self.accu - a_first_value).add_chk(a_value)
-            .ok_or("Accumulator type add overflow.")?;
+        // Calculate the new moving window state fill state.
         let new_nr_items = if self.nr_items >= size {
             self.nr_items
         } else {
@@ -174,18 +202,38 @@ impl<T: Num + NumCast + Copy,
         let a_nr_items = A::from(new_nr_items)
             .ok_or("Failed to cast number-of-items to accumulator type.")?;
 
-        // Calculate the new average.
-        let ret = new_accu / a_nr_items;
-        let ret = T::from(ret)
-            .ok_or("Failed to cast result to item type.")?;
-
-        // Append the new value to the list and update the moving window state.
+        // Insert the new value into the moving window state.
+        // If en error happens later, orig_item has to be restored.
+        let orig_item = self.items[self.index];
         self.items[self.index] = value;
-        self.nr_items = new_nr_items;
-        self.index = (self.index + 1) % size;
-        self.accu = new_accu;
 
-        Ok(ret)
+        // Recalculate the accumulator.
+        match self.accu.recalc_accu(a_first_value,
+                                    a_value,
+                                    &self.items[0..new_nr_items]) {
+            Ok(new_accu) => {
+                // Calculate the new average.
+                match T::from(new_accu / a_nr_items) {
+                    Some(avg) => {
+                        // Update the state.
+                        self.nr_items = new_nr_items;
+                        self.index = (self.index + 1) % size;
+                        self.accu = new_accu;
+                        Ok(avg)
+                    },
+                    None => {
+                        // Restore the original moving window state.
+                        self.items[self.index] = orig_item;
+                        Err("Failed to cast result to item type.")
+                    },
+                }
+            },
+            Err(e) => {
+                // Restore the original moving window state.
+                self.items[self.index] = orig_item;
+                Err(e)
+            }
+        }
     }
 
     /// Feed a new value into the Moving Average and return the new average.
