@@ -158,6 +158,7 @@ impl<T: Num + NumCast + Copy,
         let nr_items = items.len();
         assert!(nr_items <= size);
         items.resize(size, T::one());
+        let index = nr_items % size;
 
         let accu = initialize_accu(&items[0..nr_items])
             .expect("Failed to initialize the accumulator.");
@@ -166,7 +167,7 @@ impl<T: Num + NumCast + Copy,
             items,
             accu,
             nr_items,
-            index: 0,
+            index,
         }
     }
 
@@ -461,6 +462,18 @@ mod tests {
         let mut a: MovAvg<i8> = MovAvg::new(3);
         a.feed(-100);
         a.feed(-100);
+    }
+
+    #[test]
+    fn test_init() {
+        let mut a: MovAvg<i32> = MovAvg::new_init(3, vec![10]);
+        assert_eq!(a.feed(20), 15);
+        assert_eq!(a.feed(102), 44);
+        assert_eq!(a.feed(178), 100);
+
+        let mut a: MovAvg<i32> = MovAvg::new_init(3, vec![10, 20]);
+        assert_eq!(a.feed(102), 44);
+        assert_eq!(a.feed(178), 100);
     }
 }
 
