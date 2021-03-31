@@ -135,32 +135,30 @@ impl<T: Num + NumCast + Copy,
     /// Panics, if:
     /// * `size` is less than 1.
     pub fn new(size: usize) -> MovAvg<T, A> {
-        Self::new_init(vec![T::zero(); size], 0)
+        Self::new_init(size, vec![])
     }
 
     /// Construct a new Simple Moving Average and initialize its internal state.
     ///
+    /// * `size` - The size of the sliding window. In number of fed elements.
     /// * `items` - Pre-initialized window buffer. Contains the window values.
-    ///             The length of this vector must be at least 1.
-    ///             The length of this vector will be the size of the sliding window.
-    ///             The initialized elements must begin at index 0.
-    /// * `nr_items` - The number of valid pre-initialized values in `items`.
-    ///                This number must be between `0..=items.len()`.
-    ///                The value of the items in `items[nr_items]` or above will be ignored.
+    ///             The length of this vector must be less than or equal to `size`.
     ///
     /// # Panics
     ///
     /// Panics, if:
-    /// * `items.len()` is less than 1.
-    /// * `nr_items` is bigger than `items.len()`.
-    pub fn new_init(items: Vec<T>,
-                    nr_items: usize) -> MovAvg<T, A> {
+    /// * `size` is less than 1.
+    /// * `items.len()` is bigger than `size`.
+    /// * The initial accumulator calculation fails. (e.g. due to overflow).
+    pub fn new_init(size: usize,
+                    mut items: Vec<T>) -> MovAvg<T, A> {
 
-        let size = items.len();
         assert!(size > 0);
+        let nr_items = items.len();
         assert!(nr_items <= size);
+        items.resize(size, T::one());
 
-        let accu = initialize_accu(&items)
+        let accu = initialize_accu(&items[0..nr_items])
             .expect("Failed to initialize the accumulator.");
 
         MovAvg {
