@@ -79,8 +79,12 @@ macro_rules! impl_float_accu {
     }
 }
 
-impl_int_accu!(i8, i16, i32, i64, i128, isize,
-               u8, u16, u32, u64, u128, usize);
+impl_int_accu!(i8, i16, i32, i64, isize,
+               u8, u16, u32, u64, usize);
+
+#[cfg(has_i128)]
+impl_int_accu!(i128, u128);
+
 impl_float_accu!(f32, f64);
 
 /// Simple Moving Average (SMA)
@@ -401,6 +405,7 @@ mod tests {
         assert_eq!(a.feed(-10_000_000_000), (111 + 200 + 250 - 25 - 10_000_000_000) / 5);
     }
 
+    #[cfg(has_i128)]
     #[test]
     fn test_u128() {
         let mut a: MovAvg<u128> = MovAvg::new(5);
@@ -414,6 +419,7 @@ mod tests {
         assert_eq!(a.feed(10_000_000_000_000_000_000_000), (100 + 111 + 200 + 250 + 10_000_000_000_000_000_000_000) / 5);
     }
 
+    #[cfg(has_i128)]
     #[test]
     fn test_i128() {
         let mut a: MovAvg<i128> = MovAvg::new(5);
