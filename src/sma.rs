@@ -500,16 +500,30 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected="Accumulator type add overflow")]
     fn test_accu_overflow() {
+        let mut a: MovAvg<u8> = MovAvg::new(3);
+        a.feed(200);
+        assert!(a.try_feed(200).is_err());
+    }
+
+    #[test]
+    #[should_panic(expected="Accumulator type add overflow")]
+    fn test_accu_overflow_panic() {
         let mut a: MovAvg<u8> = MovAvg::new(3);
         a.feed(200);
         a.feed(200); // this panics
     }
 
     #[test]
-    #[should_panic(expected="Accumulator type add overflow")]
     fn test_accu_underflow() {
+        let mut a: MovAvg<i8> = MovAvg::new(3);
+        a.feed(-100);
+        assert!(a.try_feed(-100).is_err());
+    }
+
+    #[test]
+    #[should_panic(expected="Accumulator type add overflow")]
+    fn test_accu_underflow_panic() {
         let mut a: MovAvg<i8> = MovAvg::new(3);
         a.feed(-100);
         a.feed(-100); // this panics
@@ -538,10 +552,22 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected="The MovAvg state is empty")]
     fn test_get_empty() {
         let a: MovAvg<i32> = MovAvg::new(3);
+        assert!(a.try_get().is_err());
+    }
+
+    #[test]
+    #[should_panic(expected="The MovAvg state is empty")]
+    fn test_get_empty_panic() {
+        let a: MovAvg<i32> = MovAvg::new(3);
         assert_eq!(a.get(), 42); // this panics
+    }
+
+    #[test]
+    fn test_initialize_accu() {
+        let a: u16 = initialize_accu(&[1_u32, 10_u32, 100_u32, 0_u32, 1000_u32]).unwrap();
+        assert_eq!(a, 1111);
     }
 }
 
