@@ -146,7 +146,7 @@ impl<T: Num + NumCast + Copy,
     /// Panics, if:
     /// * `size` is less than 1.
     pub fn new(size: usize) -> MovAvg<T, A> {
-        Self::new_init(size, vec![])
+        Self::new_init(size, Vec::with_capacity(size))
     }
 
     /// Construct a new Simple Moving Average and initialize its internal state.
