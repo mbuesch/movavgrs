@@ -87,6 +87,11 @@ impl_int_accu!(i128, u128);
 
 impl_float_accu!(f32, f64);
 
+enum MovAvgBuf<'a, T> {
+    Owned(Vec<T>),
+    Ref(&'a mut [T]),
+}
+
 /// Simple Moving Average (SMA)
 ///
 /// # Examples
@@ -124,16 +129,17 @@ impl_float_accu!(f32, f64);
 /// * `A` - The type of the internal accumulator.
 ///         This type must be bigger then or equal to `T`.
 ///         By default this is the same type as `T`.
-pub struct MovAvg<T, A=T> {
-    items:      Vec<T>,
+pub struct MovAvg<'a, T, A=T> {
+    items:      MovAvgBuf<'a, T>,
     accu:       A,
     nr_items:   usize,
     index:      usize,
 }
 
-impl<T: Num + NumCast + Copy,
+impl<'a,
+     T: Num + NumCast + Copy,
      A: Num + NumCast + Copy + MovAvgAccu<T>>
-    MovAvg<T, A> {
+    MovAvg<'a, T, A> {
 
     /// Construct a new Simple Moving Average.
     ///
@@ -145,7 +151,7 @@ impl<T: Num + NumCast + Copy,
     ///
     /// Panics, if:
     /// * `size` is less than 1.
-    pub fn new(size: usize) -> MovAvg<T, A> {
+    pub fn new(size: usize) -> MovAvg<'a, T, A> {
         Self::new_init(size, Vec::with_capacity(size))
     }
 
@@ -162,19 +168,42 @@ impl<T: Num + NumCast + Copy,
     /// * `items.len()` is bigger than `size`.
     /// * The initial accumulator calculation fails. (e.g. due to overflow).
     pub fn new_init(size: usize,
-                    mut items: Vec<T>) -> MovAvg<T, A> {
-
+                    mut items: Vec<T>) -> MovAvg<'a, T, A> {
         assert!(size > 0);
+
         let nr_items = items.len();
         assert!(nr_items <= size);
+
         items.resize(size, T::one());
+
         let index = nr_items % size;
 
         let accu = initialize_accu(&items[0..nr_items])
             .expect("Failed to initialize the accumulator.");
 
         MovAvg {
-            items,
+            items: MovAvgBuf::Owned(items),
+            accu,
+            nr_items,
+            index,
+        }
+    }
+
+    pub fn new_from_buffer(items: &'a mut [T],
+                           nr_init: usize) -> MovAvg<'a, T, A> {
+        let size = items.len();
+        assert!(size > 0);
+
+        let nr_items = nr_init;
+        assert!(nr_items <= size);
+
+        let index = nr_items % size;
+
+        let accu = initialize_accu(&items[0..nr_items])
+            .expect("Failed to initialize the accumulator.");
+
+        MovAvg {
+            items: MovAvgBuf::Ref(items),
             accu,
             nr_items,
             index,
@@ -190,12 +219,17 @@ impl<T: Num + NumCast + Copy,
     /// Returns `Err`, if the internal accumulator overflows, or if any value conversion fails.
     /// Value conversion does not fail, if the types are big enough to hold the values.
     pub fn try_feed(&mut self, value: T) -> Result<T, &str> {
-        let size = self.items.len();
+        let items = match &mut self.items {
+            MovAvgBuf::Owned(v) => &mut v[..],
+            MovAvgBuf::Ref(r) => r,
+        };
+
+        let size = items.len();
         debug_assert!(self.nr_items <= size);
 
         // Get the first element from the moving window state.
         let first_value = if self.nr_items >= size {
-            A::from(self.items[self.index])
+            A::from(items[self.index])
                 .ok_or("Failed to cast first value to accumulator type.")?
         } else {
             A::zero()
@@ -215,13 +249,13 @@ impl<T: Num + NumCast + Copy,
 
         // Insert the new value into the moving window state.
         // If en error happens later, orig_item has to be restored.
-        let orig_item = self.items[self.index];
-        self.items[self.index] = value;
+        let orig_item = items[self.index];
+        items[self.index] = value;
 
         // Recalculate the accumulator.
         match self.accu.recalc_accu(first_value,
                                     a_value,
-                                    &self.items[0..new_nr_items]) {
+                                    &items[0..new_nr_items]) {
             Ok(new_accu) => {
                 // Calculate the new average.
                 match T::from(new_accu / a_nr_items) {
@@ -236,14 +270,14 @@ impl<T: Num + NumCast + Copy,
                     },
                     None => {
                         // Restore the original moving window state.
-                        self.items[self.index] = orig_item;
+                        items[self.index] = orig_item;
                         Err("Failed to cast result to item type.")
                     },
                 }
             },
             Err(e) => {
                 // Restore the original moving window state.
-                self.items[self.index] = orig_item;
+                items[self.index] = orig_item;
                 Err(e)
             }
         }
@@ -539,6 +573,23 @@ mod tests {
         let mut a: MovAvg<i32> = MovAvg::new_init(3, vec![10, 20]);
         assert_eq!(a.feed(102), 44);
         assert_eq!(a.feed(178), 100);
+    }
+
+    #[test]
+    fn test_new_from_buffer() {
+        let mut buf = [10, 20, 30];
+        let mut a: MovAvg<u16> = MovAvg::new_from_buffer(&mut buf, 0);
+        assert!(a.try_get().is_err());
+        assert_eq!(a.feed(50), 50 / 1);
+        assert_eq!(a.feed(60), (50 + 60) / 2);
+        assert_eq!(a.feed(70), (50 + 60 + 70) / 3);
+        assert_eq!(a.feed(80), (60 + 70 + 80) / 3);
+
+        let mut buf = [10, 20, 30];
+        let mut a: MovAvg<u16> = MovAvg::new_from_buffer(&mut buf, 2);
+        assert_eq!(a.get(), 15);
+        assert_eq!(a.feed(50), (10 + 20 + 50) / 3);
+        assert_eq!(a.feed(60), (20 + 50 + 60) / 3);
     }
 
     #[test]
