@@ -10,7 +10,7 @@ license             = "MIT OR Apache-2.0"
 readme              = "README.md"
 repository          = "https://bues.ch/cgit/movavgrs.git"
 
-categories          = ["algorithms"]
+categories          = ["algorithms", "no-std"]
 keywords            = ["moving", "average"]
 
 build               = "build.rs"

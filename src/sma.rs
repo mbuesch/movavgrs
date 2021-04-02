@@ -155,6 +155,11 @@ impl<'a,
     ///
     /// Panics, if:
     /// * `size` is less than 1.
+    ///
+    /// # no_std
+    ///
+    /// This method is only available, if the `std` feature is selected.
+    /// The `std` feature is selected by default.
     #[cfg(feature="std")]
     pub fn new(size: usize) -> MovAvg<'a, T, A> {
         Self::new_init(size, Vec::with_capacity(size))
@@ -172,6 +177,11 @@ impl<'a,
     /// * `size` is less than 1.
     /// * `items.len()` is bigger than `size`.
     /// * The initial accumulator calculation fails. (e.g. due to overflow).
+    ///
+    /// # no_std
+    ///
+    /// This method is only available, if the `std` feature is selected.
+    /// The `std` feature is selected by default.
     #[cfg(feature="std")]
     pub fn new_init(size: usize,
                     mut items: Vec<T>) -> MovAvg<'a, T, A> {
@@ -195,11 +205,31 @@ impl<'a,
         }
     }
 
-    pub fn new_from_buffer(items: &'a mut [T],
+    /// Construct a new Simple Moving Average from a pre-allocated buffer.
+    ///
+    /// * `buffer` - (Partially) pre-initialized window buffer. Contains the window values.
+    ///              The length of this buffer slice defines the Moving Average window size.
+    /// * `nr_init` - The number of initialized Moving Average window elements in `buffer`.
+    ///               `nr_init` must be less than or equal to `buffer.len()`.
+    ///               The initialized values in `buffer` must begin at index 0.
+    ///               The values of uninitialized elements in `buffer` does not matter.
+    ///
+    /// # Panics
+    ///
+    /// Panics, if:
+    /// * `buffer.len()` is less than 1.
+    /// * `nr_init` is bigger than `buffer.len()`.
+    /// * The initial accumulator calculation fails. (e.g. due to overflow).
+    ///
+    /// # no_std
+    ///
+    /// This method is always available.
+    pub fn new_from_buffer(buffer: &'a mut [T],
                            nr_init: usize) -> MovAvg<'a, T, A> {
-        let size = items.len();
+        let size = buffer.len();
         assert!(size > 0);
 
+        let items = buffer;
         let nr_items = nr_init;
         assert!(nr_items <= size);
 
@@ -224,6 +254,10 @@ impl<'a,
     ///
     /// Returns `Err`, if the internal accumulator overflows, or if any value conversion fails.
     /// Value conversion does not fail, if the types are big enough to hold the values.
+    ///
+    /// # no_std
+    ///
+    /// This method is always available.
     pub fn try_feed(&mut self, value: T) -> Result<T, &str> {
         let items = match &mut self.items {
             #[cfg(feature="std")]
@@ -300,6 +334,10 @@ impl<'a,
     ///
     /// Panics, if the internal accumulator overflows, or if any value conversion fails.
     /// Value conversion does not fail, if the types are big enough to hold the values.
+    ///
+    /// # no_std
+    ///
+    /// This method is always available.
     pub fn feed(&mut self, value: T) -> T {
         self.try_feed(value).expect("MovAvg calculation failed.")
     }
@@ -312,6 +350,10 @@ impl<'a,
     ///
     /// Returns `Err`, if any value conversion fails.
     /// Value conversion does not fail, if the types are big enough to hold the values.
+    ///
+    /// # no_std
+    ///
+    /// This method is always available.
     pub fn try_get(&self) -> Result<T, &str> {
         if let Some(nr_items) = A::from(self.nr_items) {
             if nr_items == A::zero() {
@@ -335,6 +377,10 @@ impl<'a,
     ///
     /// Panics, if any value conversion fails.
     /// Value conversion does not fail, if the types are big enough to hold the values.
+    ///
+    /// # no_std
+    ///
+    /// This method is always available.
     pub fn get(&self) -> T {
         self.try_get().expect("MovAvg calculation failed.")
     }
