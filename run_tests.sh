@@ -1,0 +1,6 @@
+#!/bin/sh
+set -e
+echo Running std tests...
+cargo test
+echo Running no_std tests...
+cargo test --lib --no-default-features

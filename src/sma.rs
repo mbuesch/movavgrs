@@ -12,6 +12,9 @@ use num_traits::{
     NumCast,
 };
 
+#[cfg(feature="std")]
+use std::vec::Vec;
+
 /// Initialize the accumulator from scratch by summing up all items.
 #[inline]
 fn initialize_accu<T, A>(items: &[T]) -> Result<A, &'static str>
@@ -88,6 +91,7 @@ impl_int_accu!(i128, u128);
 impl_float_accu!(f32, f64);
 
 enum MovAvgBuf<'a, T> {
+    #[cfg(feature="std")]
     Owned(Vec<T>),
     Ref(&'a mut [T]),
 }
@@ -151,6 +155,7 @@ impl<'a,
     ///
     /// Panics, if:
     /// * `size` is less than 1.
+    #[cfg(feature="std")]
     pub fn new(size: usize) -> MovAvg<'a, T, A> {
         Self::new_init(size, Vec::with_capacity(size))
     }
@@ -167,6 +172,7 @@ impl<'a,
     /// * `size` is less than 1.
     /// * `items.len()` is bigger than `size`.
     /// * The initial accumulator calculation fails. (e.g. due to overflow).
+    #[cfg(feature="std")]
     pub fn new_init(size: usize,
                     mut items: Vec<T>) -> MovAvg<'a, T, A> {
         assert!(size > 0);
@@ -220,6 +226,7 @@ impl<'a,
     /// Value conversion does not fail, if the types are big enough to hold the values.
     pub fn try_feed(&mut self, value: T) -> Result<T, &str> {
         let items = match &mut self.items {
+            #[cfg(feature="std")]
             MovAvgBuf::Owned(v) => &mut v[..],
             MovAvgBuf::Ref(r) => r,
         };
@@ -337,6 +344,10 @@ impl<'a,
 mod tests {
     use super::*;
 
+    #[cfg(feature="std")]
+    use std::vec;
+
+    #[cfg(feature="std")]
     #[test]
     fn test_u8() {
         let mut a: MovAvg<u8> = MovAvg::new(3);
@@ -347,6 +358,7 @@ mod tests {
         assert_eq!(a.feed(111), (2 + 100 + 111) / 3);
     }
 
+    #[cfg(feature="std")]
     #[test]
     fn test_i8() {
         let mut a: MovAvg<i8> = MovAvg::new(5);
@@ -358,6 +370,7 @@ mod tests {
         assert_eq!(a.feed(-20), (20 + 2 - 4 - 19 - 20) / 5);
     }
 
+    #[cfg(feature="std")]
     #[test]
     fn test_u16() {
         let mut a: MovAvg<u16> = MovAvg::new(5);
@@ -371,6 +384,7 @@ mod tests {
         assert_eq!(a.feed(10_000), (100 + 111 + 200 + 250 + 10_000) / 5);
     }
 
+    #[cfg(feature="std")]
     #[test]
     fn test_i16() {
         let mut a: MovAvg<i16> = MovAvg::new(5);
@@ -385,6 +399,7 @@ mod tests {
         assert_eq!(a.feed(-10_000), (111 + 200 + 250 - 25 - 10_000) / 5);
     }
 
+    #[cfg(feature="std")]
     #[test]
     fn test_u32() {
         let mut a: MovAvg<u32> = MovAvg::new(5);
@@ -398,6 +413,7 @@ mod tests {
         assert_eq!(a.feed(100_000), (100 + 111 + 200 + 250 + 100_000) / 5);
     }
 
+    #[cfg(feature="std")]
     #[test]
     fn test_i32() {
         let mut a: MovAvg<i32> = MovAvg::new(5);
@@ -412,6 +428,7 @@ mod tests {
         assert_eq!(a.feed(-100_000), (111 + 200 + 250 - 25 - 100_000) / 5);
     }
 
+    #[cfg(feature="std")]
     #[test]
     fn test_u64() {
         let mut a: MovAvg<u64> = MovAvg::new(5);
@@ -425,6 +442,7 @@ mod tests {
         assert_eq!(a.feed(10_000_000_000), (100 + 111 + 200 + 250 + 10_000_000_000) / 5);
     }
 
+    #[cfg(feature="std")]
     #[test]
     fn test_i64() {
         let mut a: MovAvg<i64> = MovAvg::new(5);
@@ -439,6 +457,7 @@ mod tests {
         assert_eq!(a.feed(-10_000_000_000), (111 + 200 + 250 - 25 - 10_000_000_000) / 5);
     }
 
+    #[cfg(feature="std")]
     #[cfg(has_i128)]
     #[test]
     fn test_u128() {
@@ -453,6 +472,7 @@ mod tests {
         assert_eq!(a.feed(10_000_000_000_000_000_000_000), (100 + 111 + 200 + 250 + 10_000_000_000_000_000_000_000) / 5);
     }
 
+    #[cfg(feature="std")]
     #[cfg(has_i128)]
     #[test]
     fn test_i128() {
@@ -468,6 +488,7 @@ mod tests {
         assert_eq!(a.feed(-10_000_000_000_000_000_000_000), (111 + 200 + 250 - 25 - 10_000_000_000_000_000_000_000) / 5);
     }
 
+    #[cfg(feature="std")]
     #[test]
     fn test_usize() {
         let mut a: MovAvg<usize> = MovAvg::new(5);
@@ -481,6 +502,7 @@ mod tests {
         assert_eq!(a.feed(100_000), (100 + 111 + 200 + 250 + 100_000) / 5);
     }
 
+    #[cfg(feature="std")]
     #[test]
     fn test_isize() {
         let mut a: MovAvg<isize> = MovAvg::new(5);
@@ -495,6 +517,7 @@ mod tests {
         assert_eq!(a.feed(-100_000), (111 + 200 + 250 - 25 - 100_000) / 5);
     }
 
+    #[cfg(feature="std")]
     #[test]
     fn test_f32() {
         let mut a: MovAvg<f32> = MovAvg::new(5);
@@ -510,6 +533,7 @@ mod tests {
         assert!((a.feed(-100000.0) - ((111.0 + 200.0 + 250.0 - 25.0 - 100000.0) / 5.0)).abs() < e);
     }
 
+    #[cfg(feature="std")]
     #[test]
     fn test_f64() {
         let mut a: MovAvg<f64> = MovAvg::new(5);
@@ -525,6 +549,7 @@ mod tests {
         assert!((a.feed(-100000.0) - ((111.0 + 200.0 + 250.0 - 25.0 - 100000.0) / 5.0)).abs() < e);
     }
 
+    #[cfg(feature="std")]
     #[test]
     fn test_single() {
         let mut a: MovAvg<i32> = MovAvg::new(1);
@@ -533,6 +558,7 @@ mod tests {
         assert_eq!(a.feed(2), 2);
     }
 
+    #[cfg(feature="std")]
     #[test]
     fn test_accu_overflow() {
         let mut a: MovAvg<u8> = MovAvg::new(3);
@@ -540,6 +566,7 @@ mod tests {
         assert!(a.try_feed(200).is_err());
     }
 
+    #[cfg(feature="std")]
     #[test]
     #[should_panic(expected="Accumulator type add overflow")]
     fn test_accu_overflow_panic() {
@@ -548,6 +575,7 @@ mod tests {
         a.feed(200); // this panics
     }
 
+    #[cfg(feature="std")]
     #[test]
     fn test_accu_underflow() {
         let mut a: MovAvg<i8> = MovAvg::new(3);
@@ -555,6 +583,7 @@ mod tests {
         assert!(a.try_feed(-100).is_err());
     }
 
+    #[cfg(feature="std")]
     #[test]
     #[should_panic(expected="Accumulator type add overflow")]
     fn test_accu_underflow_panic() {
@@ -563,6 +592,7 @@ mod tests {
         a.feed(-100); // this panics
     }
 
+    #[cfg(feature="std")]
     #[test]
     fn test_init() {
         let mut a: MovAvg<i32> = MovAvg::new_init(3, vec![10]);
@@ -592,6 +622,7 @@ mod tests {
         assert_eq!(a.feed(60), (20 + 50 + 60) / 3);
     }
 
+    #[cfg(feature="std")]
     #[test]
     fn test_get() {
         let mut a: MovAvg<i32> = MovAvg::new_init(3, vec![10, 20]);
@@ -602,12 +633,14 @@ mod tests {
         assert_eq!(a.get(), 100);
     }
 
+    #[cfg(feature="std")]
     #[test]
     fn test_get_empty() {
         let a: MovAvg<i32> = MovAvg::new(3);
         assert!(a.try_get().is_err());
     }
 
+    #[cfg(feature="std")]
     #[test]
     #[should_panic(expected="The MovAvg state is empty")]
     fn test_get_empty_panic() {

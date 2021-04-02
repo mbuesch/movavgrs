@@ -1,19 +1,23 @@
 # -*- coding: utf-8 -*-
 
 [package]
-edition         = "2018"
-name            = "movavg"
-description     = "Generic Moving Average calculation"
-version         = "1.1.0"
-authors         = ["Michael Buesch <m@bues.ch>"]
-license         = "MIT OR Apache-2.0"
-readme          = "README.md"
-repository      = "https://bues.ch/cgit/movavgrs.git"
+edition             = "2018"
+name                = "movavg"
+description         = "Generic Moving Average calculation"
+version             = "1.1.0"
+authors             = ["Michael Buesch <m@bues.ch>"]
+license             = "MIT OR Apache-2.0"
+readme              = "README.md"
+repository          = "https://bues.ch/cgit/movavgrs.git"
 
-categories      = ["algorithms"]
-keywords        = ["moving", "average"]
+categories          = ["algorithms"]
+keywords            = ["moving", "average"]
 
-build           = "build.rs"
+build               = "build.rs"
+
+[features]
+default             = ["std"]
+std                 = []
 
 [dependencies.num-traits]
 version             = "0.2"
@@ -22,6 +26,6 @@ default-features    = false
 [dependencies]
 
 [build-dependencies]
-autocfg         = "1.0"
+autocfg             = "1.0"
 
 # vim: ts=4 sw=4 expandtab
