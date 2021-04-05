@@ -12,13 +12,13 @@ use num_traits::{
     NumCast,
 };
 
-/// Initialize the accumulator from scratch by summing up all items.
+/// Initialize the accumulator from scratch by summing up all items from the window buffer.
 #[inline]
-fn initialize_accu<T, A>(items: &[T]) -> Result<A, &'static str>
+fn initialize_accu<T, A>(window_buffer: &[T]) -> Result<A, &'static str>
     where T: Num + NumCast + Copy,
           A: Num + NumCast + Copy,
 {
-    items.iter().fold(
+    window_buffer.iter().fold(
         Ok(A::zero()),
         |acc, x| {
             match acc {
@@ -41,7 +41,7 @@ pub trait MovAvgAccu<T>: Copy {
     fn recalc_accu(self,
                    first_value: Self,
                    input_value: Self,
-                   items: &[T]) -> Result<Self, &'static str>;
+                   window_buffer: &[T]) -> Result<Self, &'static str>;
 }
 
 macro_rules! impl_int_accu {
@@ -52,7 +52,7 @@ macro_rules! impl_int_accu {
                 fn recalc_accu(self,
                                first_value: Self,
                                input_value: Self,
-                               _items: &[T]) -> Result<Self, &'static str> {
+                               _window_buffer: &[T]) -> Result<Self, &'static str> {
                     // Subtract the to be removed value from the sum and add the new value.
                     (self - first_value).checked_add(input_value)
                         .ok_or("Accumulator type add overflow.")
@@ -70,9 +70,9 @@ macro_rules! impl_float_accu {
                 fn recalc_accu(self,
                                _first_value: Self,
                                _input_value: Self,
-                               items: &[T]) -> Result<Self, &'static str> {
+                               window_buffer: &[T]) -> Result<Self, &'static str> {
                     // Recalculate the accumulator from scratch.
-                    initialize_accu(items)
+                    initialize_accu(window_buffer)
                 }
             }
         )*
@@ -126,7 +126,7 @@ impl_float_accu!(f32, f64);
 /// * `WINDOW_SIZE` - The size of the sliding window.
 ///                   In number of fed elements.
 pub struct MovAvg<T, A, const WINDOW_SIZE: usize> {
-    items:      [T; WINDOW_SIZE],
+    buffer:     [T; WINDOW_SIZE],
     accu:       A,
     nr_items:   usize,
     index:      usize,
@@ -191,7 +191,7 @@ impl<T: Num + NumCast + Copy,
                     nr_populated: usize) -> MovAvg<T, A, WINDOW_SIZE> {
         let size = buffer.len();
         assert!(WINDOW_SIZE > 0);
-        assert!(size > 0);
+        assert!(size == WINDOW_SIZE);
 
         let nr_items = nr_populated;
         assert!(nr_items <= size);
@@ -202,7 +202,7 @@ impl<T: Num + NumCast + Copy,
             .expect("Failed to initialize the accumulator.");
 
         MovAvg {
-            items: buffer,
+            buffer,
             accu,
             nr_items,
             index,
@@ -218,12 +218,12 @@ impl<T: Num + NumCast + Copy,
     /// Returns `Err`, if the internal accumulator overflows, or if any value conversion fails.
     /// Value conversion does not fail, if the types are big enough to hold the values.
     pub fn try_feed(&mut self, value: T) -> Result<T, &str> {
-        let size = self.items.len();
+        let size = self.buffer.len();
         debug_assert!(self.nr_items <= size);
 
         // Get the first element from the moving window state.
         let first_value = if self.nr_items >= size {
-            A::from(self.items[self.index])
+            A::from(self.buffer[self.index])
                 .ok_or("Failed to cast first value to accumulator type.")?
         } else {
             A::zero()
@@ -243,13 +243,13 @@ impl<T: Num + NumCast + Copy,
 
         // Insert the new value into the moving window state.
         // If en error happens later, orig_item has to be restored.
-        let orig_item = self.items[self.index];
-        self.items[self.index] = value;
+        let orig_item = self.buffer[self.index];
+        self.buffer[self.index] = value;
 
         // Recalculate the accumulator.
         match self.accu.recalc_accu(first_value,
                                     a_value,
-                                    &self.items[0..new_nr_items]) {
+                                    &self.buffer[0..new_nr_items]) {
             Ok(new_accu) => {
                 // Calculate the new average.
                 match T::from(new_accu / a_nr_items) {
@@ -264,14 +264,14 @@ impl<T: Num + NumCast + Copy,
                     },
                     None => {
                         // Restore the original moving window state.
-                        self.items[self.index] = orig_item;
+                        self.buffer[self.index] = orig_item;
                         Err("Failed to cast result to item type.")
                     },
                 }
             },
             Err(e) => {
                 // Restore the original moving window state.
-                self.items[self.index] = orig_item;
+                self.buffer[self.index] = orig_item;
                 Err(e)
             }
         }
