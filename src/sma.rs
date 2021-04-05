@@ -12,9 +12,6 @@ use num_traits::{
     NumCast,
 };
 
-#[cfg(feature="std")]
-use std::vec::Vec;
-
 /// Initialize the accumulator from scratch by summing up all items.
 #[inline]
 fn initialize_accu<T, A>(items: &[T]) -> Result<A, &'static str>
@@ -90,12 +87,6 @@ impl_int_accu!(i128, u128);
 
 impl_float_accu!(f32, f64);
 
-enum MovAvgBuf<'a, T> {
-    #[cfg(feature="std")]
-    Owned(Vec<T>),
-    Ref(&'a mut [T]),
-}
-
 /// Simple Moving Average (SMA)
 ///
 /// # Examples
@@ -104,7 +95,7 @@ enum MovAvgBuf<'a, T> {
 /// use movavg::MovAvg;
 ///
 /// // Integers
-/// let mut avg: MovAvg<i32> = MovAvg::new(3); // window size = 3
+/// let mut avg: MovAvg<i32, i32, 3> = MovAvg::new(); // window size = 3
 /// assert_eq!(avg.feed(10), 10);
 /// assert_eq!(avg.feed(20), 15);
 /// assert_eq!(avg.feed(30), 20);
@@ -112,7 +103,7 @@ enum MovAvgBuf<'a, T> {
 /// assert_eq!(avg.get(), 30);
 ///
 /// // Floats
-/// let mut avg: MovAvg<f64> = MovAvg::new(3);
+/// let mut avg: MovAvg<f64, f64, 3> = MovAvg::new();
 /// assert_eq!(avg.feed(10.0), 10.0);
 /// assert_eq!(avg.feed(20.0), 15.0);
 /// assert_eq!(avg.feed(30.0), 20.0);
@@ -120,126 +111,98 @@ enum MovAvgBuf<'a, T> {
 /// assert_eq!(avg.get(), 30.0);
 ///
 /// // Bigger accumulator
-/// let mut avg: MovAvg<i8, i32> = MovAvg::new(3);
+/// let mut avg: MovAvg<i8, i32, 3> = MovAvg::new();
 /// assert_eq!(avg.feed(100), 100);
 /// assert_eq!(avg.feed(100), 100); // This would overflow an i8 accumulator
 /// ```
 ///
 /// # Type Generics
 ///
-/// `struct MovAvg<T, A=T>`
+/// `struct MovAvg<T, A, WINDOW_SIZE>`
 ///
 /// * `T` - The type of the `feed()` input value.
 /// * `A` - The type of the internal accumulator.
 ///         This type must be bigger then or equal to `T`.
-///         By default this is the same type as `T`.
-pub struct MovAvg<'a, T, A=T> {
-    items:      MovAvgBuf<'a, T>,
+/// * `WINDOW_SIZE` - The size of the sliding window.
+///                   In number of fed elements.
+pub struct MovAvg<T, A, const WINDOW_SIZE: usize> {
+    items:      [T; WINDOW_SIZE],
     accu:       A,
     nr_items:   usize,
     index:      usize,
 }
 
-impl<'a,
-     T: Num + NumCast + Copy,
-     A: Num + NumCast + Copy + MovAvgAccu<T>>
-    MovAvg<'a, T, A> {
+impl<T: Num + NumCast + Copy,
+     A: Num + NumCast + Copy + MovAvgAccu<T>,
+     const WINDOW_SIZE: usize>
+    MovAvg<T, A, WINDOW_SIZE> {
 
     /// Construct a new Simple Moving Average.
     ///
     /// The internal accumulator defaults to zero.
     ///
-    /// * `size` - The size of the sliding window. In number of fed elements.
+    /// # Examples
     ///
-    /// # Panics
+    /// ```
+    /// use movavg::MovAvg;
     ///
-    /// Panics, if:
-    /// * `size` is less than 1.
-    ///
-    /// # no_std
-    ///
-    /// This method is only available, if the `std` feature is selected.
-    /// The `std` feature is selected by default.
-    #[cfg(feature="std")]
-    pub fn new(size: usize) -> MovAvg<'a, T, A> {
-        Self::new_init(size, Vec::with_capacity(size))
+    /// let mut avg: MovAvg<i32, i32, 3> = MovAvg::new(); // window size = 3
+    /// assert_eq!(avg.feed(10), 10);
+    /// ```
+    pub fn new() -> MovAvg<T, A, WINDOW_SIZE> {
+        assert!(WINDOW_SIZE > 0);
+        Self::new_init([T::one(); WINDOW_SIZE], 0)
     }
 
-    /// Construct a new Simple Moving Average and initialize its internal state.
+    /// Construct a new Simple Moving Average from a pre-allocated buffer
+    /// and initialize its internal state.
     ///
-    /// * `size` - The size of the sliding window. In number of fed elements.
-    /// * `items` - Pre-initialized window buffer. Contains the window values.
-    ///             The length of this vector must be less than or equal to `size`.
-    ///
-    /// # Panics
-    ///
-    /// Panics, if:
-    /// * `size` is less than 1.
-    /// * `items.len()` is bigger than `size`.
-    /// * The initial accumulator calculation fails. (e.g. due to overflow).
-    ///
-    /// # no_std
-    ///
-    /// This method is only available, if the `std` feature is selected.
-    /// The `std` feature is selected by default.
-    #[cfg(feature="std")]
-    pub fn new_init(size: usize,
-                    mut items: Vec<T>) -> MovAvg<'a, T, A> {
-        assert!(size > 0);
-
-        let nr_items = items.len();
-        assert!(nr_items <= size);
-
-        items.resize(size, T::one());
-
-        let index = nr_items % size;
-
-        let accu = initialize_accu(&items[0..nr_items])
-            .expect("Failed to initialize the accumulator.");
-
-        MovAvg {
-            items: MovAvgBuf::Owned(items),
-            accu,
-            nr_items,
-            index,
-        }
-    }
-
-    /// Construct a new Simple Moving Average from a pre-allocated buffer.
-    ///
-    /// * `buffer` - (Partially) pre-initialized window buffer. Contains the window values.
-    ///              The length of this buffer slice defines the Moving Average window size.
-    /// * `nr_init` - The number of initialized Moving Average window elements in `buffer`.
-    ///               `nr_init` must be less than or equal to `buffer.len()`.
-    ///               The initialized values in `buffer` must begin at index 0.
-    ///               The values of uninitialized elements in `buffer` does not matter.
+    /// * `buffer` - (Partially) pre-populated window buffer. Contains the window values.
+    ///              The length of this buffer defines the Moving Average window size.
+    /// * `nr_populated` - The number of pre-populated Moving Average window elements in `buffer`.
+    ///                    `nr_populated` must be less than or equal to `buffer.len()`.
+    ///                    The populated values in `buffer` must begin at index 0.
+    ///                    The values of unpopulated elements in `buffer` does not matter.
     ///
     /// # Panics
     ///
     /// Panics, if:
-    /// * `buffer.len()` is less than 1.
-    /// * `nr_init` is bigger than `buffer.len()`.
+    /// * `nr_populated` is bigger than `buffer.len()`.
     /// * The initial accumulator calculation fails. (e.g. due to overflow).
     ///
-    /// # no_std
+    /// # Examples
     ///
-    /// This method is always available.
-    pub fn new_from_buffer(buffer: &'a mut [T],
-                           nr_init: usize) -> MovAvg<'a, T, A> {
+    /// ```
+    /// use movavg::MovAvg;
+    ///
+    /// let mut buf = [10, 20, 30,  // populated
+    ///                0, 0];       // unpopulated
+    ///
+    /// let mut avg: MovAvg<i32, i32, 5> =
+    ///     MovAvg::new_init(buf,   // Pass reference to preallocated buffer.
+    ///                      3);    // The first three elements of buf are pre-populated.
+    ///
+    /// assert_eq!(avg.get(), 20);
+    /// assert_eq!(avg.feed(60), 30);
+    /// assert_eq!(avg.feed(30), 30);
+    /// assert_eq!(avg.feed(60), 40);
+    /// ```
+    pub fn new_init(buffer: [T; WINDOW_SIZE],
+                    nr_populated: usize) -> MovAvg<T, A, WINDOW_SIZE> {
         let size = buffer.len();
+        assert!(WINDOW_SIZE > 0);
         assert!(size > 0);
 
-        let items = buffer;
-        let nr_items = nr_init;
+        let nr_items = nr_populated;
         assert!(nr_items <= size);
 
         let index = nr_items % size;
 
-        let accu = initialize_accu(&items[0..nr_items])
+        let accu = initialize_accu(&buffer[0..nr_items])
             .expect("Failed to initialize the accumulator.");
 
         MovAvg {
-            items: MovAvgBuf::Ref(items),
+            items: buffer,
             accu,
             nr_items,
             index,
@@ -254,23 +217,13 @@ impl<'a,
     ///
     /// Returns `Err`, if the internal accumulator overflows, or if any value conversion fails.
     /// Value conversion does not fail, if the types are big enough to hold the values.
-    ///
-    /// # no_std
-    ///
-    /// This method is always available.
     pub fn try_feed(&mut self, value: T) -> Result<T, &str> {
-        let items = match &mut self.items {
-            #[cfg(feature="std")]
-            MovAvgBuf::Owned(v) => &mut v[..],
-            MovAvgBuf::Ref(r) => r,
-        };
-
-        let size = items.len();
+        let size = self.items.len();
         debug_assert!(self.nr_items <= size);
 
         // Get the first element from the moving window state.
         let first_value = if self.nr_items >= size {
-            A::from(items[self.index])
+            A::from(self.items[self.index])
                 .ok_or("Failed to cast first value to accumulator type.")?
         } else {
             A::zero()
@@ -290,13 +243,13 @@ impl<'a,
 
         // Insert the new value into the moving window state.
         // If en error happens later, orig_item has to be restored.
-        let orig_item = items[self.index];
-        items[self.index] = value;
+        let orig_item = self.items[self.index];
+        self.items[self.index] = value;
 
         // Recalculate the accumulator.
         match self.accu.recalc_accu(first_value,
                                     a_value,
-                                    &items[0..new_nr_items]) {
+                                    &self.items[0..new_nr_items]) {
             Ok(new_accu) => {
                 // Calculate the new average.
                 match T::from(new_accu / a_nr_items) {
@@ -311,14 +264,14 @@ impl<'a,
                     },
                     None => {
                         // Restore the original moving window state.
-                        items[self.index] = orig_item;
+                        self.items[self.index] = orig_item;
                         Err("Failed to cast result to item type.")
                     },
                 }
             },
             Err(e) => {
                 // Restore the original moving window state.
-                items[self.index] = orig_item;
+                self.items[self.index] = orig_item;
                 Err(e)
             }
         }
@@ -334,10 +287,6 @@ impl<'a,
     ///
     /// Panics, if the internal accumulator overflows, or if any value conversion fails.
     /// Value conversion does not fail, if the types are big enough to hold the values.
-    ///
-    /// # no_std
-    ///
-    /// This method is always available.
     pub fn feed(&mut self, value: T) -> T {
         self.try_feed(value).expect("MovAvg calculation failed.")
     }
@@ -350,10 +299,6 @@ impl<'a,
     ///
     /// Returns `Err`, if any value conversion fails.
     /// Value conversion does not fail, if the types are big enough to hold the values.
-    ///
-    /// # no_std
-    ///
-    /// This method is always available.
     pub fn try_get(&self) -> Result<T, &str> {
         if let Some(nr_items) = A::from(self.nr_items) {
             if nr_items == A::zero() {
@@ -377,10 +322,6 @@ impl<'a,
     ///
     /// Panics, if any value conversion fails.
     /// Value conversion does not fail, if the types are big enough to hold the values.
-    ///
-    /// # no_std
-    ///
-    /// This method is always available.
     pub fn get(&self) -> T {
         self.try_get().expect("MovAvg calculation failed.")
     }
@@ -390,13 +331,9 @@ impl<'a,
 mod tests {
     use super::*;
 
-    #[cfg(feature="std")]
-    use std::vec;
-
-    #[cfg(feature="std")]
     #[test]
     fn test_u8() {
-        let mut a: MovAvg<u8> = MovAvg::new(3);
+        let mut a: MovAvg<u8, u8, 3> = MovAvg::new();
         assert_eq!(a.feed(10), 10 / 1);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
@@ -404,10 +341,9 @@ mod tests {
         assert_eq!(a.feed(111), (2 + 100 + 111) / 3);
     }
 
-    #[cfg(feature="std")]
     #[test]
     fn test_i8() {
-        let mut a: MovAvg<i8> = MovAvg::new(5);
+        let mut a: MovAvg<i8, i8, 5> = MovAvg::new();
         assert_eq!(a.feed(10), 10 / 1);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
@@ -416,10 +352,9 @@ mod tests {
         assert_eq!(a.feed(-20), (20 + 2 - 4 - 19 - 20) / 5);
     }
 
-    #[cfg(feature="std")]
     #[test]
     fn test_u16() {
-        let mut a: MovAvg<u16> = MovAvg::new(5);
+        let mut a: MovAvg<u16, u16, 5> = MovAvg::new();
         assert_eq!(a.feed(10), 10 / 1);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
@@ -430,10 +365,9 @@ mod tests {
         assert_eq!(a.feed(10_000), (100 + 111 + 200 + 250 + 10_000) / 5);
     }
 
-    #[cfg(feature="std")]
     #[test]
     fn test_i16() {
-        let mut a: MovAvg<i16> = MovAvg::new(5);
+        let mut a: MovAvg<i16, i16, 5> = MovAvg::new();
         assert_eq!(a.feed(10), 10 / 1);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
@@ -445,10 +379,9 @@ mod tests {
         assert_eq!(a.feed(-10_000), (111 + 200 + 250 - 25 - 10_000) / 5);
     }
 
-    #[cfg(feature="std")]
     #[test]
     fn test_u32() {
-        let mut a: MovAvg<u32> = MovAvg::new(5);
+        let mut a: MovAvg<u32, u32, 5> = MovAvg::new();
         assert_eq!(a.feed(10), 10 / 1);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
@@ -459,10 +392,9 @@ mod tests {
         assert_eq!(a.feed(100_000), (100 + 111 + 200 + 250 + 100_000) / 5);
     }
 
-    #[cfg(feature="std")]
     #[test]
     fn test_i32() {
-        let mut a: MovAvg<i32> = MovAvg::new(5);
+        let mut a: MovAvg<i32, i32, 5> = MovAvg::new();
         assert_eq!(a.feed(10), 10 / 1);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
@@ -474,10 +406,9 @@ mod tests {
         assert_eq!(a.feed(-100_000), (111 + 200 + 250 - 25 - 100_000) / 5);
     }
 
-    #[cfg(feature="std")]
     #[test]
     fn test_u64() {
-        let mut a: MovAvg<u64> = MovAvg::new(5);
+        let mut a: MovAvg<u64, u64, 5> = MovAvg::new();
         assert_eq!(a.feed(10), 10 / 1);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
@@ -488,10 +419,9 @@ mod tests {
         assert_eq!(a.feed(10_000_000_000), (100 + 111 + 200 + 250 + 10_000_000_000) / 5);
     }
 
-    #[cfg(feature="std")]
     #[test]
     fn test_i64() {
-        let mut a: MovAvg<i64> = MovAvg::new(5);
+        let mut a: MovAvg<i64, i64, 5> = MovAvg::new();
         assert_eq!(a.feed(10), 10 / 1);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
@@ -503,11 +433,10 @@ mod tests {
         assert_eq!(a.feed(-10_000_000_000), (111 + 200 + 250 - 25 - 10_000_000_000) / 5);
     }
 
-    #[cfg(feature="std")]
     #[cfg(has_i128)]
     #[test]
     fn test_u128() {
-        let mut a: MovAvg<u128> = MovAvg::new(5);
+        let mut a: MovAvg<u128, u128, 5> = MovAvg::new();
         assert_eq!(a.feed(10), 10 / 1);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
@@ -518,11 +447,10 @@ mod tests {
         assert_eq!(a.feed(10_000_000_000_000_000_000_000), (100 + 111 + 200 + 250 + 10_000_000_000_000_000_000_000) / 5);
     }
 
-    #[cfg(feature="std")]
     #[cfg(has_i128)]
     #[test]
     fn test_i128() {
-        let mut a: MovAvg<i128> = MovAvg::new(5);
+        let mut a: MovAvg<i128, i128, 5> = MovAvg::new();
         assert_eq!(a.feed(10), 10 / 1);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
@@ -534,10 +462,9 @@ mod tests {
         assert_eq!(a.feed(-10_000_000_000_000_000_000_000), (111 + 200 + 250 - 25 - 10_000_000_000_000_000_000_000) / 5);
     }
 
-    #[cfg(feature="std")]
     #[test]
     fn test_usize() {
-        let mut a: MovAvg<usize> = MovAvg::new(5);
+        let mut a: MovAvg<usize, usize, 5> = MovAvg::new();
         assert_eq!(a.feed(10), 10 / 1);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
@@ -548,10 +475,9 @@ mod tests {
         assert_eq!(a.feed(100_000), (100 + 111 + 200 + 250 + 100_000) / 5);
     }
 
-    #[cfg(feature="std")]
     #[test]
     fn test_isize() {
-        let mut a: MovAvg<isize> = MovAvg::new(5);
+        let mut a: MovAvg<isize, isize, 5> = MovAvg::new();
         assert_eq!(a.feed(10), 10 / 1);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
@@ -563,10 +489,9 @@ mod tests {
         assert_eq!(a.feed(-100_000), (111 + 200 + 250 - 25 - 100_000) / 5);
     }
 
-    #[cfg(feature="std")]
     #[test]
     fn test_f32() {
-        let mut a: MovAvg<f32> = MovAvg::new(5);
+        let mut a: MovAvg<f32, f32, 5> = MovAvg::new();
         let e = 0.001;
         assert!((a.feed(10.0) - (10.0 / 1.0)).abs() < e);
         assert!((a.feed(20.0) - ((10.0 + 20.0) / 2.0)).abs() < e);
@@ -579,10 +504,9 @@ mod tests {
         assert!((a.feed(-100000.0) - ((111.0 + 200.0 + 250.0 - 25.0 - 100000.0) / 5.0)).abs() < e);
     }
 
-    #[cfg(feature="std")]
     #[test]
     fn test_f64() {
-        let mut a: MovAvg<f64> = MovAvg::new(5);
+        let mut a: MovAvg<f64, f64, 5> = MovAvg::new();
         let e = 0.000001;
         assert!((a.feed(10.0) - (10.0 / 1.0)).abs() < e);
         assert!((a.feed(20.0) - ((10.0 + 20.0) / 2.0)).abs() < e);
@@ -595,83 +519,71 @@ mod tests {
         assert!((a.feed(-100000.0) - ((111.0 + 200.0 + 250.0 - 25.0 - 100000.0) / 5.0)).abs() < e);
     }
 
-    #[cfg(feature="std")]
     #[test]
     fn test_single() {
-        let mut a: MovAvg<i32> = MovAvg::new(1);
+        let mut a: MovAvg<i32, i32, 1> = MovAvg::new();
         assert_eq!(a.feed(10), 10);
         assert_eq!(a.feed(20), 20);
         assert_eq!(a.feed(2), 2);
     }
 
-    #[cfg(feature="std")]
     #[test]
     fn test_accu_overflow() {
-        let mut a: MovAvg<u8> = MovAvg::new(3);
+        let mut a: MovAvg<u8, u8, 3> = MovAvg::new();
         a.feed(200);
         assert!(a.try_feed(200).is_err());
     }
 
-    #[cfg(feature="std")]
     #[test]
     #[should_panic(expected="Accumulator type add overflow")]
     fn test_accu_overflow_panic() {
-        let mut a: MovAvg<u8> = MovAvg::new(3);
+        let mut a: MovAvg<u8, u8, 3> = MovAvg::new();
         a.feed(200);
         a.feed(200); // this panics
     }
 
-    #[cfg(feature="std")]
     #[test]
     fn test_accu_underflow() {
-        let mut a: MovAvg<i8> = MovAvg::new(3);
+        let mut a: MovAvg<i8, i8, 3> = MovAvg::new();
         a.feed(-100);
         assert!(a.try_feed(-100).is_err());
     }
 
-    #[cfg(feature="std")]
     #[test]
     #[should_panic(expected="Accumulator type add overflow")]
     fn test_accu_underflow_panic() {
-        let mut a: MovAvg<i8> = MovAvg::new(3);
+        let mut a: MovAvg<i8, i8, 3> = MovAvg::new();
         a.feed(-100);
         a.feed(-100); // this panics
     }
 
-    #[cfg(feature="std")]
     #[test]
     fn test_init() {
-        let mut a: MovAvg<i32> = MovAvg::new_init(3, vec![10]);
+        let mut a: MovAvg<i32, i32, 3> = MovAvg::new_init([10, 99, 99], 1);
         assert_eq!(a.feed(20), 15);
         assert_eq!(a.feed(102), 44);
         assert_eq!(a.feed(178), 100);
 
-        let mut a: MovAvg<i32> = MovAvg::new_init(3, vec![10, 20]);
+        let mut a: MovAvg<i32, i32, 3> = MovAvg::new_init([10, 20, 0], 2);
         assert_eq!(a.feed(102), 44);
         assert_eq!(a.feed(178), 100);
-    }
 
-    #[test]
-    fn test_new_from_buffer() {
-        let mut buf = [10, 20, 30];
-        let mut a: MovAvg<u16> = MovAvg::new_from_buffer(&mut buf, 0);
+        let mut a: MovAvg<u16, u16, 3> = MovAvg::new_init([10, 20, 30], 0);
         assert!(a.try_get().is_err());
         assert_eq!(a.feed(50), 50 / 1);
         assert_eq!(a.feed(60), (50 + 60) / 2);
         assert_eq!(a.feed(70), (50 + 60 + 70) / 3);
         assert_eq!(a.feed(80), (60 + 70 + 80) / 3);
 
-        let mut buf = [10, 20, 30];
-        let mut a: MovAvg<u16> = MovAvg::new_from_buffer(&mut buf, 2);
+        let mut a: MovAvg<u16, u16, 3> = MovAvg::new_init([10, 20, 30], 2);
         assert_eq!(a.get(), 15);
         assert_eq!(a.feed(50), (10 + 20 + 50) / 3);
         assert_eq!(a.feed(60), (20 + 50 + 60) / 3);
     }
 
-    #[cfg(feature="std")]
     #[test]
     fn test_get() {
-        let mut a: MovAvg<i32> = MovAvg::new_init(3, vec![10, 20]);
+        let mut a: MovAvg<i32, i32, 3> = MovAvg::new_init([10, 20, 0], 2);
         assert_eq!(a.get(), 15);
         assert_eq!(a.feed(102), 44);
         assert_eq!(a.get(), 44);
@@ -679,18 +591,16 @@ mod tests {
         assert_eq!(a.get(), 100);
     }
 
-    #[cfg(feature="std")]
     #[test]
     fn test_get_empty() {
-        let a: MovAvg<i32> = MovAvg::new(3);
+        let a: MovAvg<i32, i32, 3> = MovAvg::new();
         assert!(a.try_get().is_err());
     }
 
-    #[cfg(feature="std")]
     #[test]
     #[should_panic(expected="The MovAvg state is empty")]
     fn test_get_empty_panic() {
-        let a: MovAvg<i32> = MovAvg::new(3);
+        let a: MovAvg<i32, i32, 3> = MovAvg::new();
         assert_eq!(a.get(), 42); // this panics
     }
 
