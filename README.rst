@@ -13,8 +13,8 @@ and float types
 * f32, f64
 
 
-Usage
-=====
+Example Cargo.toml dependencies
+===============================
 
 Add this to your Cargo.toml:
 
@@ -23,7 +23,17 @@ Add this to your Cargo.toml:
 	[dependencies]
 	movavg = "2.0"
 
-Example usage:
+If you want to use movavg without the `std` library (often called `no_std`), then use the following Cargo.toml dependency:
+
+.. code:: toml
+
+	[dependencies]
+	movavg = { version = "2.0", default-features = false }
+
+Currently the `no_std` variant supports all functionality that the default `std` variant supports. But that may change in future.
+
+Example usage
+=============
 
 .. code:: rust
 
