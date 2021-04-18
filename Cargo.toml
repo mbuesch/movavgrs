@@ -19,13 +19,13 @@ build               = "build.rs"
 default             = ["std"]
 std                 = []
 
-[dependencies.num-traits]
-version             = "0.2"
-default-features    = false
-
 [dependencies]
 
+[dependencies.num-traits]
+version             = "0.2.0"
+default-features    = false
+
 [build-dependencies]
-autocfg             = "1.0"
+autocfg             = "1.0.0"
 
 # vim: ts=4 sw=4 expandtab
