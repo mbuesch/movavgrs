@@ -18,6 +18,7 @@ build               = "build.rs"
 [features]
 default             = ["std"]
 std                 = []
+fastfloat           = []
 
 [dependencies]
 

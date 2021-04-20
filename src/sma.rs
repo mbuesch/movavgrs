@@ -68,11 +68,16 @@ macro_rules! impl_float_accu {
             impl<T: Num + NumCast + Copy> MovAvgAccu<T> for $t {
                 #[inline]
                 fn recalc_accu(self,
-                               _first_value: Self,
-                               _input_value: Self,
+                               first_value: Self,
+                               input_value: Self,
                                window_buffer: &[T]) -> Result<Self, &'static str> {
-                    // Recalculate the accumulator from scratch.
-                    initialize_accu(window_buffer)
+                    if cfg!(feature="fastfloat") {
+                        // Fast calculation, just like the integer variant.
+                        Ok((self - first_value) + input_value)
+                    } else {
+                        // Recalculate the accumulator from scratch.
+                        initialize_accu(window_buffer)
+                    }
                 }
             }
         )*
@@ -490,6 +495,31 @@ mod tests {
         assert!((a.feed(-100000.0) - ((111.0 + 200.0 + 250.0 - 25.0 - 100000.0) / 5.0)).abs() < e);
     }
 
+    macro_rules! gen_test_float_extra {
+        ($ty:ty) => {
+            const PI: $ty = 3.14159265358979323846264338327950288;
+            let mut a: MovAvg<$ty, $ty, 200> = MovAvg::new();
+            let mut prev = -0.1;
+            for i in 0..1000 {
+                let val = (PI * (i as $ty / 100.0)).sin();
+                let res = a.feed(val);
+                if i < 75 {
+                    assert!(res > prev);
+                } else if i < 200 {
+                    assert!(res < prev);
+                } else {
+                    assert!(res < 1e-6);
+                }
+                prev = res;
+            }
+        }
+    }
+
+    #[test]
+    fn test_f32_extra() {
+        gen_test_float_extra!(f32);
+    }
+
     #[test]
     fn test_f64() {
         let mut a: MovAvg<f64, f64, 5> = MovAvg::new();
@@ -503,6 +533,11 @@ mod tests {
         assert!((a.feed(250.0) - ((2.0 + 100.0 + 111.0 + 200.0 + 250.0) / 5.0)).abs() < e);
         assert!((a.feed(-25.0) - ((100.0 + 111.0 + 200.0 + 250.0 - 25.0) / 5.0)).abs() < e);
         assert!((a.feed(-100000.0) - ((111.0 + 200.0 + 250.0 - 25.0 - 100000.0) / 5.0)).abs() < e);
+    }
+
+    #[test]
+    fn test_f64_extra() {
+        gen_test_float_extra!(f64);
     }
 
     #[test]
