@@ -18,15 +18,15 @@ fn initialize_accu<T, A>(window_buffer: &[T]) -> Result<A, &'static str>
     where T: Num + NumCast + Copy,
           A: Num + NumCast + Copy,
 {
-    window_buffer.iter().fold(
-        Ok(A::zero()),
-        |acc, x| {
-            match acc {
-                Ok(acc) => Ok(acc + A::from(*x).ok_or("Failed to cast value to accumulator type.")?),
-                Err(e) => Err(e),
-            }
+    let mut accu = A::zero();
+    for value in window_buffer {
+        if let Some(value) = A::from(*value) {
+            accu = accu + value;
+        } else {
+            return Err("Failed to cast value to accumulator type.");
         }
-    )
+    }
+    Ok(accu)
 }
 
 /// Internal accumulator calculation trait for integers and floats.
