@@ -15,8 +15,8 @@ use num_traits::{
 /// Initialize the accumulator from scratch by summing up all items from the window buffer.
 #[inline]
 fn initialize_accu<T, A>(window_buffer: &[T]) -> Result<A, &'static str>
-    where T: Num + NumCast + Copy,
-          A: Num + NumCast + Copy,
+where T: Num + NumCast + Copy,
+      A: Num + NumCast + Copy,
 {
     let mut accu = A::zero();
     for value in window_buffer {
@@ -65,7 +65,10 @@ macro_rules! impl_int_accu {
 macro_rules! impl_float_accu {
     ($($t:ty),*) => {
         $(
-            impl<T: Num + NumCast + Copy> MovAvgAccu<T> for $t {
+            impl<T> MovAvgAccu<T> for $t
+            where
+                T: Num + NumCast + Copy
+            {
                 #[inline]
                 fn recalc_accu(self,
                                first_value: Self,
@@ -107,6 +110,15 @@ impl_float_accu!(f32, f64);
 /// assert_eq!(avg.get(), 30);
 /// ```
 ///
+/// `MovAvg` also implements `Default`:
+///
+/// ```
+/// use movavg::MovAvg;
+///
+/// let mut avg: MovAvg<i32, i32, 3> = Default::default();
+/// assert_eq!(avg.feed(10), 10);
+/// ```
+///
 /// # Type Generics
 ///
 /// `struct MovAvg<T, A, WINDOW_SIZE>`
@@ -123,11 +135,11 @@ pub struct MovAvg<T, A, const WINDOW_SIZE: usize> {
     index:      usize,
 }
 
-impl<T: Num + NumCast + Copy,
-     A: Num + NumCast + Copy + MovAvgAccu<T>,
-     const WINDOW_SIZE: usize>
-    MovAvg<T, A, WINDOW_SIZE> {
-
+impl<T, A, const WINDOW_SIZE: usize> MovAvg<T, A, WINDOW_SIZE>
+where
+    T: Num + NumCast + Copy,
+    A: Num + NumCast + Copy + MovAvgAccu<T>,
+{
     /// Construct a new Simple Moving Average.
     ///
     /// The internal accumulator defaults to zero.
@@ -170,7 +182,7 @@ impl<T: Num + NumCast + Copy,
     ///                0, 0];       // unpopulated
     ///
     /// let mut avg: MovAvg<i32, i32, 5> =
-    ///     MovAvg::new_init(buf,   // Pass reference to preallocated buffer.
+    ///     MovAvg::new_init(buf,   // Pass buffer ownership.
     ///                      3);    // The first three elements of buf are pre-populated.
     ///
     /// assert_eq!(avg.get(), 20);
@@ -315,6 +327,17 @@ impl<T: Num + NumCast + Copy,
     /// Value conversion does not fail, if the types are big enough to hold the values.
     pub fn get(&self) -> T {
         self.try_get().expect("MovAvg calculation failed.")
+    }
+}
+
+impl<A, T, const WINDOW_SIZE: usize> Default for MovAvg<T, A, WINDOW_SIZE>
+where
+    T: Num + NumCast + Copy,
+    A: Num + NumCast + Copy + MovAvgAccu<T>,
+{
+    #[inline]
+    fn default() -> Self {
+        Self::new()
     }
 }
 
