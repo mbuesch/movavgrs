@@ -7,8 +7,6 @@
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 //
 
-use autocfg;
-
 fn main() {
     let ac = autocfg::new();
     ac.emit_has_type("i128");
