@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 [package]
-edition             = "2018"
+edition             = "2021"
 name                = "movavg"
 description         = "Generic Moving Average calculation"
 version             = "2.1.0"
