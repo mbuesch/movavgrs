@@ -348,7 +348,7 @@ mod tests {
     #[test]
     fn test_u8() {
         let mut a: MovAvg<u8, u8, 3> = MovAvg::new();
-        assert_eq!(a.feed(10), 10 / 1);
+        assert_eq!(a.feed(10), 10);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
         assert_eq!(a.feed(100), (20 + 2 + 100) / 3);
@@ -358,7 +358,7 @@ mod tests {
     #[test]
     fn test_i8() {
         let mut a: MovAvg<i8, i8, 5> = MovAvg::new();
-        assert_eq!(a.feed(10), 10 / 1);
+        assert_eq!(a.feed(10), 10);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
         assert_eq!(a.feed(-4), (10 + 20 + 2 - 4) / 4);
@@ -369,7 +369,7 @@ mod tests {
     #[test]
     fn test_u16() {
         let mut a: MovAvg<u16, u16, 5> = MovAvg::new();
-        assert_eq!(a.feed(10), 10 / 1);
+        assert_eq!(a.feed(10), 10);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
         assert_eq!(a.feed(100), (10 + 20 + 2 + 100) / 4);
@@ -382,7 +382,7 @@ mod tests {
     #[test]
     fn test_i16() {
         let mut a: MovAvg<i16, i16, 5> = MovAvg::new();
-        assert_eq!(a.feed(10), 10 / 1);
+        assert_eq!(a.feed(10), 10);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
         assert_eq!(a.feed(100), (10 + 20 + 2 + 100) / 4);
@@ -396,7 +396,7 @@ mod tests {
     #[test]
     fn test_u32() {
         let mut a: MovAvg<u32, u32, 5> = MovAvg::new();
-        assert_eq!(a.feed(10), 10 / 1);
+        assert_eq!(a.feed(10), 10);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
         assert_eq!(a.feed(100), (10 + 20 + 2 + 100) / 4);
@@ -409,7 +409,7 @@ mod tests {
     #[test]
     fn test_i32() {
         let mut a: MovAvg<i32, i32, 5> = MovAvg::new();
-        assert_eq!(a.feed(10), 10 / 1);
+        assert_eq!(a.feed(10), 10);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
         assert_eq!(a.feed(100), (10 + 20 + 2 + 100) / 4);
@@ -423,7 +423,7 @@ mod tests {
     #[test]
     fn test_u64() {
         let mut a: MovAvg<u64, u64, 5> = MovAvg::new();
-        assert_eq!(a.feed(10), 10 / 1);
+        assert_eq!(a.feed(10), 10);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
         assert_eq!(a.feed(100), (10 + 20 + 2 + 100) / 4);
@@ -436,7 +436,7 @@ mod tests {
     #[test]
     fn test_i64() {
         let mut a: MovAvg<i64, i64, 5> = MovAvg::new();
-        assert_eq!(a.feed(10), 10 / 1);
+        assert_eq!(a.feed(10), 10);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
         assert_eq!(a.feed(100), (10 + 20 + 2 + 100) / 4);
@@ -451,7 +451,7 @@ mod tests {
     #[test]
     fn test_u128() {
         let mut a: MovAvg<u128, u128, 5> = MovAvg::new();
-        assert_eq!(a.feed(10), 10 / 1);
+        assert_eq!(a.feed(10), 10);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
         assert_eq!(a.feed(100), (10 + 20 + 2 + 100) / 4);
@@ -465,7 +465,7 @@ mod tests {
     #[test]
     fn test_i128() {
         let mut a: MovAvg<i128, i128, 5> = MovAvg::new();
-        assert_eq!(a.feed(10), 10 / 1);
+        assert_eq!(a.feed(10), 10);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
         assert_eq!(a.feed(100), (10 + 20 + 2 + 100) / 4);
@@ -479,7 +479,7 @@ mod tests {
     #[test]
     fn test_usize() {
         let mut a: MovAvg<usize, usize, 5> = MovAvg::new();
-        assert_eq!(a.feed(10), 10 / 1);
+        assert_eq!(a.feed(10), 10);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
         assert_eq!(a.feed(100), (10 + 20 + 2 + 100) / 4);
@@ -492,7 +492,7 @@ mod tests {
     #[test]
     fn test_isize() {
         let mut a: MovAvg<isize, isize, 5> = MovAvg::new();
-        assert_eq!(a.feed(10), 10 / 1);
+        assert_eq!(a.feed(10), 10);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
         assert_eq!(a.feed(100), (10 + 20 + 2 + 100) / 4);
@@ -507,7 +507,7 @@ mod tests {
     fn test_f32() {
         let mut a: MovAvg<f32, f32, 5> = MovAvg::new();
         let e = 0.001;
-        assert!((a.feed(10.0) - (10.0 / 1.0)).abs() < e);
+        assert!((a.feed(10.0) - 10.0).abs() < e);
         assert!((a.feed(20.0) - ((10.0 + 20.0) / 2.0)).abs() < e);
         assert!((a.feed(2.0) - ((10.0 + 20.0 + 2.0) / 3.0)).abs() < e);
         assert!((a.feed(100.0) - ((10.0 + 20.0 + 2.0 + 100.0) / 4.0)).abs() < e);
@@ -520,7 +520,7 @@ mod tests {
 
     macro_rules! gen_test_float_extra {
         ($ty:ty) => {
-            const PI: $ty = 3.14159265358979323846264338327950288;
+            const PI: $ty = std::f64::consts::PI as $ty;
             let mut a: MovAvg<$ty, $ty, 200> = MovAvg::new();
             let mut prev = -0.1;
             for i in 0..1000 {
@@ -547,7 +547,7 @@ mod tests {
     fn test_f64() {
         let mut a: MovAvg<f64, f64, 5> = MovAvg::new();
         let e = 0.000001;
-        assert!((a.feed(10.0) - (10.0 / 1.0)).abs() < e);
+        assert!((a.feed(10.0) - 10.0).abs() < e);
         assert!((a.feed(20.0) - ((10.0 + 20.0) / 2.0)).abs() < e);
         assert!((a.feed(2.0) - ((10.0 + 20.0 + 2.0) / 3.0)).abs() < e);
         assert!((a.feed(100.0) - ((10.0 + 20.0 + 2.0 + 100.0) / 4.0)).abs() < e);
@@ -614,7 +614,7 @@ mod tests {
 
         let mut a: MovAvg<u16, u16, 3> = MovAvg::new_init([10, 20, 30], 0);
         assert!(a.try_get().is_err());
-        assert_eq!(a.feed(50), 50 / 1);
+        assert_eq!(a.feed(50), 50);
         assert_eq!(a.feed(60), (50 + 60) / 2);
         assert_eq!(a.feed(70), (50 + 60 + 70) / 3);
         assert_eq!(a.feed(80), (60 + 70 + 80) / 3);
