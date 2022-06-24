@@ -21,7 +21,7 @@ Add this to your Cargo.toml:
 .. code:: toml
 
 	[dependencies]
-	movavg = "2.0"
+	movavg = "2"
 
 
 Example usage
@@ -62,7 +62,7 @@ If you want to use movavg without the `std` library (often called `no_std`), the
 .. code:: toml
 
 	[dependencies]
-	movavg = { version = "2.0", default-features = false }
+	movavg = { version = "2", default-features = false }
 
 Currently the `no_std` variant supports all functionality that the default `std` variant supports. But that may change in future.
 
@@ -74,7 +74,7 @@ The `fastfloat` feature can be used to enable much faster, but less accurate flo
 .. code:: toml
 
 	[dependencies]
-	movavg = { version = "2.0", features = ["fastfloat"] }
+	movavg = { version = "2", features = ["fastfloat"] }
 
 This feature may also be used together with disabled `std` feature (see `no_std`).
 
@@ -82,12 +82,12 @@ This feature may also be used together with disabled `std` feature (see `no_std`
 Rust compiler version
 =====================
 
-Requires Rust compiler version 1.51 or later.
+Requires Rust compiler version 1.61 or later.
 
 
 License
 =======
 
-Copyright (c) 2021 Michael Buesch <m@bues.ch>
+Copyright (c) 2021-2022 Michael Buesch <m@bues.ch>
 
 Licensed under the Apache License version 2.0 or the MIT license, at your option.
