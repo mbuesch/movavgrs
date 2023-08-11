@@ -1,6 +1,6 @@
 // -*- coding: utf-8 -*-
 //
-// Copyright 2021 Michael Büsch <m@bues.ch>
+// Copyright 2021-2023 Michael Büsch <m@bues.ch>
 //
 // Licensed under the Apache License version 2.0
 // or the MIT license, at your option.
@@ -210,6 +210,18 @@ where
             nr_items,
             index,
         }
+    }
+
+    /// Reset the Moving Average.
+    ///
+    /// This resets the number of accumulated items to 0,
+    /// as if this instance was re-created with [new].
+    ///
+    /// Note: This does not actually overwrite the buffered items in memory.
+    pub fn reset(&mut self) {
+        self.accu = A::zero();
+        self.nr_items = 0;
+        self.index = 0;
     }
 
     /// Try to feed a new value into the Moving Average and return the new average.
@@ -623,6 +635,27 @@ mod tests {
         assert_eq!(a.get(), 15);
         assert_eq!(a.feed(50), (10 + 20 + 50) / 3);
         assert_eq!(a.feed(60), (20 + 50 + 60) / 3);
+    }
+
+    #[test]
+    fn test_reset() {
+        let mut a: MovAvg<i32, i32, 5> = MovAvg::new();
+        assert_eq!(a.feed(10), 10);
+        assert_eq!(a.feed(20), (10 + 20) / 2);
+        assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
+        assert_eq!(a.feed(100), (10 + 20 + 2 + 100) / 4);
+        assert_eq!(a.feed(111), (10 + 20 + 2 + 100 + 111) / 5);
+        assert_eq!(a.feed(200), (20 + 2 + 100 + 111 + 200) / 5);
+        assert_eq!(a.feed(250), (2 + 100 + 111 + 200 + 250) / 5);
+        assert_eq!(a.feed(-25), (100 + 111 + 200 + 250 - 25) / 5);
+        a.reset();
+        assert_eq!(a.feed(250), 250);
+        assert_eq!(a.feed(-25), (250 - 25) / 2);
+        assert_eq!(a.feed(100), (250 - 25 + 100) / 3);
+        assert_eq!(a.feed(111), (250 - 25 + 100 + 111) / 4);
+        assert_eq!(a.feed(200), (250 - 25 + 100 + 111 + 200) / 5);
+        assert_eq!(a.feed(250), (-25 + 100 + 111 + 200 + 250) / 5);
+        assert_eq!(a.feed(20), (100 + 111 + 200 + 250 + 20) / 5);
     }
 
     #[test]
