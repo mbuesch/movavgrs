@@ -1,7 +1,11 @@
 movavg - Generic Moving Average calculation
 ===========================================
 
-`https://bues.ch/ <https://bues.ch/>`_
+`Project home <https://bues.ch/>`_
+
+`Git repository <https://bues.ch/cgit/movavgrs.git>`_
+
+`Github repository <https://github.com/mbuesch/movavgrs>`_
 
 Generic `Moving Average <https://en.wikipedia.org/wiki/Moving_average>`_ calculation for the integer types
 
@@ -88,6 +92,6 @@ Requires Rust compiler version 1.61 or later.
 License
 =======
 
-Copyright (c) 2021-2022 Michael Buesch <m@bues.ch>
+Copyright (c) 2021-2023 Michael Büsch <m@bues.ch>
 
 Licensed under the Apache License version 2.0 or the MIT license, at your option.
