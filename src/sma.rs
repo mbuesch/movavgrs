@@ -534,7 +534,7 @@ mod tests {
 
     macro_rules! gen_test_float_extra {
         ($ty:ty) => {
-            const PI: $ty = std::f64::consts::PI as $ty;
+            const PI: $ty = core::f64::consts::PI as $ty;
             let mut a: MovAvg<$ty, $ty, 200> = MovAvg::new();
             let mut prev = -0.1;
             for i in 0..1000 {
