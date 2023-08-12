@@ -214,10 +214,12 @@ where
 
     /// Reset the Moving Average.
     ///
-    /// This resets the number of accumulated items to 0,
-    /// as if this instance was re-created with [new].
+    /// This resets the accumulator and the number of accumulated items to 0,
+    /// as if this instance was re-created with [MovAvg::new].
     ///
-    /// Note: This does not actually overwrite the buffered items in memory.
+    /// # Note
+    ///
+    /// This does not actually overwrite the buffered items in the internal buffer.
     pub fn reset(&mut self) {
         self.accu = A::zero();
         self.nr_items = 0;
