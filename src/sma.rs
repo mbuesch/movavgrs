@@ -7,16 +7,14 @@
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 //
 
-use num_traits::{
-    Num,
-    NumCast,
-};
+use num_traits::{Num, NumCast};
 
 /// Initialize the accumulator from scratch by summing up all items from the window buffer.
 #[inline]
 fn initialize_accu<T, A>(window_buffer: &[T]) -> Result<A, &'static str>
-where T: Num + NumCast + Copy,
-      A: Num + NumCast + Copy,
+where
+    T: Num + NumCast + Copy,
+    A: Num + NumCast + Copy,
 {
     let mut accu = A::zero();
     for value in window_buffer {
@@ -38,10 +36,12 @@ where T: Num + NumCast + Copy,
 ///
 /// `T` is the SMA input value type.
 pub trait MovAvgAccu<T>: Copy {
-    fn recalc_accu(self,
-                   first_value: Self,
-                   input_value: Self,
-                   window_buffer: &[T]) -> Result<Self, &'static str>;
+    fn recalc_accu(
+        self,
+        first_value: Self,
+        input_value: Self,
+        window_buffer: &[T],
+    ) -> Result<Self, &'static str>;
 }
 
 macro_rules! impl_int_accu {
@@ -87,8 +87,7 @@ macro_rules! impl_float_accu {
     }
 }
 
-impl_int_accu!(i8, i16, i32, i64, isize,
-               u8, u16, u32, u64, usize);
+impl_int_accu!(i8, i16, i32, i64, isize, u8, u16, u32, u64, usize);
 
 #[cfg(has_i128)]
 impl_int_accu!(i128, u128);
@@ -129,10 +128,10 @@ impl_float_accu!(f32, f64);
 /// * `WINDOW_SIZE` - The size of the sliding window.
 ///                   In number of fed elements.
 pub struct MovAvg<T, A, const WINDOW_SIZE: usize> {
-    buffer:     [T; WINDOW_SIZE],
-    accu:       A,
-    nr_items:   usize,
-    index:      usize,
+    buffer: [T; WINDOW_SIZE],
+    accu: A,
+    nr_items: usize,
+    index: usize,
 }
 
 impl<T, A, const WINDOW_SIZE: usize> MovAvg<T, A, WINDOW_SIZE>
@@ -190,8 +189,7 @@ where
     /// assert_eq!(avg.feed(30), 30);
     /// assert_eq!(avg.feed(60), 40);
     /// ```
-    pub fn new_init(buffer: [T; WINDOW_SIZE],
-                    nr_populated: usize) -> MovAvg<T, A, WINDOW_SIZE> {
+    pub fn new_init(buffer: [T; WINDOW_SIZE], nr_populated: usize) -> MovAvg<T, A, WINDOW_SIZE> {
         let size = buffer.len();
         assert!(WINDOW_SIZE > 0);
         assert!(size == WINDOW_SIZE);
@@ -201,8 +199,8 @@ where
 
         let index = nr_items % size;
 
-        let accu = initialize_accu(&buffer[0..nr_items])
-            .expect("Failed to initialize the accumulator.");
+        let accu =
+            initialize_accu(&buffer[0..nr_items]).expect("Failed to initialize the accumulator.");
 
         MovAvg {
             buffer,
@@ -246,8 +244,7 @@ where
             A::zero()
         };
 
-        let a_value = A::from(value)
-            .ok_or("Failed to cast value to accumulator type.")?;
+        let a_value = A::from(value).ok_or("Failed to cast value to accumulator type.")?;
 
         // Calculate the new moving window state fill state.
         let new_nr_items = if self.nr_items >= size {
@@ -255,8 +252,8 @@ where
         } else {
             self.nr_items + 1
         };
-        let a_nr_items = A::from(new_nr_items)
-            .ok_or("Failed to cast number-of-items to accumulator type.")?;
+        let a_nr_items =
+            A::from(new_nr_items).ok_or("Failed to cast number-of-items to accumulator type.")?;
 
         // Insert the new value into the moving window state.
         // If en error happens later, orig_item has to be restored.
@@ -264,9 +261,10 @@ where
         self.buffer[self.index] = value;
 
         // Recalculate the accumulator.
-        match self.accu.recalc_accu(first_value,
-                                    a_value,
-                                    &self.buffer[0..new_nr_items]) {
+        match self
+            .accu
+            .recalc_accu(first_value, a_value, &self.buffer[0..new_nr_items])
+        {
             Ok(new_accu) => {
                 // Calculate the new average.
                 match T::from(new_accu / a_nr_items) {
@@ -278,14 +276,14 @@ where
 
                         // Return the end result.
                         Ok(avg)
-                    },
+                    }
                     None => {
                         // Restore the original moving window state.
                         self.buffer[self.index] = orig_item;
                         Err("Failed to cast result to item type.")
-                    },
+                    }
                 }
-            },
+            }
             Err(e) => {
                 // Restore the original moving window state.
                 self.buffer[self.index] = orig_item;
@@ -321,8 +319,7 @@ where
             if nr_items == A::zero() {
                 Err("The MovAvg state is empty.")
             } else {
-                T::from(self.accu / nr_items)
-                    .ok_or("Failed to cast result to item type.")
+                T::from(self.accu / nr_items).ok_or("Failed to cast result to item type.")
             }
         } else {
             Err("Failed to cast number-of-items to accumulator type.")
@@ -444,7 +441,10 @@ mod tests {
         assert_eq!(a.feed(111), (10 + 20 + 2 + 100 + 111) / 5);
         assert_eq!(a.feed(200), (20 + 2 + 100 + 111 + 200) / 5);
         assert_eq!(a.feed(250), (2 + 100 + 111 + 200 + 250) / 5);
-        assert_eq!(a.feed(10_000_000_000), (100 + 111 + 200 + 250 + 10_000_000_000) / 5);
+        assert_eq!(
+            a.feed(10_000_000_000),
+            (100 + 111 + 200 + 250 + 10_000_000_000) / 5
+        );
     }
 
     #[test]
@@ -458,7 +458,10 @@ mod tests {
         assert_eq!(a.feed(200), (20 + 2 + 100 + 111 + 200) / 5);
         assert_eq!(a.feed(250), (2 + 100 + 111 + 200 + 250) / 5);
         assert_eq!(a.feed(-25), (100 + 111 + 200 + 250 - 25) / 5);
-        assert_eq!(a.feed(-10_000_000_000), (111 + 200 + 250 - 25 - 10_000_000_000) / 5);
+        assert_eq!(
+            a.feed(-10_000_000_000),
+            (111 + 200 + 250 - 25 - 10_000_000_000) / 5
+        );
     }
 
     #[cfg(has_i128)]
@@ -472,7 +475,10 @@ mod tests {
         assert_eq!(a.feed(111), (10 + 20 + 2 + 100 + 111) / 5);
         assert_eq!(a.feed(200), (20 + 2 + 100 + 111 + 200) / 5);
         assert_eq!(a.feed(250), (2 + 100 + 111 + 200 + 250) / 5);
-        assert_eq!(a.feed(10_000_000_000_000_000_000_000), (100 + 111 + 200 + 250 + 10_000_000_000_000_000_000_000) / 5);
+        assert_eq!(
+            a.feed(10_000_000_000_000_000_000_000),
+            (100 + 111 + 200 + 250 + 10_000_000_000_000_000_000_000) / 5
+        );
     }
 
     #[cfg(has_i128)]
@@ -487,7 +493,10 @@ mod tests {
         assert_eq!(a.feed(200), (20 + 2 + 100 + 111 + 200) / 5);
         assert_eq!(a.feed(250), (2 + 100 + 111 + 200 + 250) / 5);
         assert_eq!(a.feed(-25), (100 + 111 + 200 + 250 - 25) / 5);
-        assert_eq!(a.feed(-10_000_000_000_000_000_000_000), (111 + 200 + 250 - 25 - 10_000_000_000_000_000_000_000) / 5);
+        assert_eq!(
+            a.feed(-10_000_000_000_000_000_000_000),
+            (111 + 200 + 250 - 25 - 10_000_000_000_000_000_000_000) / 5
+        );
     }
 
     #[test]
@@ -549,7 +558,7 @@ mod tests {
                 }
                 prev = res;
             }
-        }
+        };
     }
 
     #[test]
@@ -593,7 +602,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected="Accumulator type add overflow")]
+    #[should_panic(expected = "Accumulator type add overflow")]
     fn test_accu_overflow_panic() {
         let mut a: MovAvg<u8, u8, 3> = MovAvg::new();
         a.feed(200);
@@ -608,7 +617,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected="Accumulator type add overflow")]
+    #[should_panic(expected = "Accumulator type add overflow")]
     fn test_accu_underflow_panic() {
         let mut a: MovAvg<i8, i8, 3> = MovAvg::new();
         a.feed(-100);
@@ -677,7 +686,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected="The MovAvg state is empty")]
+    #[should_panic(expected = "The MovAvg state is empty")]
     fn test_get_empty_panic() {
         let a: MovAvg<i32, i32, 3> = MovAvg::new();
         assert_eq!(a.get(), 42); // this panics

@@ -26,14 +26,11 @@
 //!           This crate is independent of the `std` library, if this feature is disabled.
 
 #![no_std]
-#[cfg(feature="std")]
+#[cfg(feature = "std")]
 extern crate std;
 
 mod sma;
 
-pub use sma::{
-    MovAvg,
-    MovAvgAccu,
-};
+pub use sma::{MovAvg, MovAvgAccu};
 
 // vim: ts=4 sw=4 expandtab
