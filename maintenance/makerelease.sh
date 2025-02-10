@@ -1,8 +1,6 @@
 #!/bin/sh
 
-srcdir="$(dirname "$0")"
-[ "$(echo "$srcdir" | cut -c1)" = '/' ] || srcdir="$PWD/$srcdir"
-
+srcdir="$(realpath "$0" | xargs dirname)"
 srcdir="$srcdir/.."
 
 # Import the makerelease.lib
@@ -13,6 +11,18 @@ for path in $(echo "$PATH" | tr ':' ' '); do
 	MAKERELEASE_LIB="$path/makerelease.lib"
 done
 [ -f "$MAKERELEASE_LIB" ] && . "$MAKERELEASE_LIB" || die "makerelease.lib not found."
+
+hook_get_version()
+{
+	version="$(cargo_local_pkg_version movavg)"
+}
+
+hook_regression_tests()
+{
+	default_hook_regression_tests "$@"
+
+	sh "$1"/maintenance/run_tests.sh
+}
 
 project=movavgrs
 makerelease "$@"
