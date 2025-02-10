@@ -127,6 +127,7 @@ impl_float_accu!(f32, f64);
 ///         This type must be bigger then or equal to `T`.
 /// * `WINDOW_SIZE` - The size of the sliding window.
 ///                   In number of fed elements.
+#[derive(Clone, Debug)]
 pub struct MovAvg<T, A, const WINDOW_SIZE: usize> {
     buffer: [T; WINDOW_SIZE],
     accu: A,
