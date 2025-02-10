@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         toolchain:
-          - 1.78 # MSRV
+          - 1.61 # MSRV
           - 1.84
         os:
           - ubuntu-latest
