@@ -29,5 +29,8 @@ jobs:
       - run: cargo clippy --locked -- --deny warnings
       - run: cargo clippy --locked --tests -- --deny warnings
       - run: cargo test --locked
+      - run: cargo test --locked --features fastfloat
+      - run: cargo test --locked --tests --no-default-features
+      - run: cargo test --locked --tests --no-default-features --features fastfloat
 
 # vim: ts=2 sw=2 expandtab
