@@ -4,7 +4,7 @@
 edition             = "2021"
 name                = "movavg"
 description         = "Generic Moving Average calculation"
-version             = "2.3.0"
+version             = "2.4.0"
 authors             = ["Michael Büsch <m@bues.ch>"]
 license             = "MIT OR Apache-2.0"
 readme              = "README.md"
