@@ -15,7 +15,11 @@ jobs:
         toolchain:
           - 1.78 # MSRV
           - 1.84
-    runs-on: ubuntu-latest
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - run: rustup update ${{ matrix.toolchain }}
