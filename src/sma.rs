@@ -225,6 +225,28 @@ where
         self.index = 0;
     }
 
+    /// Get the current length of the Moving Average window.
+    ///
+    /// This length is in the range of `0..WINDOW_SIZE`.
+    /// If the length is less than `WINDOW_SIZE`, then the Moving Average window
+    /// has not been fully populated, yet.
+    ///
+    /// See [Self::window_size] to get the nominal maximum length of the window.
+    #[inline]
+    pub const fn len(&self) -> usize {
+        self.nr_items
+    }
+
+    /// Get the nominal size of the Moving Average window.
+    ///
+    /// This is always equal to `WINDOW_SIZE`.
+    ///
+    /// See [Self::len] to get the actual current length of the window.
+    #[inline]
+    pub const fn window_size(&self) -> usize {
+        WINDOW_SIZE
+    }
+
     /// Try to feed a new value into the Moving Average and return the new average.
     ///
     /// * `value` - The new value to feed into the Moving Average.
@@ -590,6 +612,7 @@ mod tests {
     #[test]
     fn test_single() {
         let mut a: MovAvg<i32, i32, 1> = MovAvg::new();
+        assert_eq!(a.window_size(), 1);
         assert_eq!(a.feed(10), 10);
         assert_eq!(a.feed(20), 20);
         assert_eq!(a.feed(2), 2);
@@ -628,15 +651,25 @@ mod tests {
     #[test]
     fn test_init() {
         let mut a: MovAvg<i32, i32, 3> = MovAvg::new_init([10, 99, 99], 1);
+        assert_eq!(a.window_size(), 3);
+        assert_eq!(a.len(), 1);
         assert_eq!(a.feed(20), 15);
+        assert_eq!(a.window_size(), 3);
+        assert_eq!(a.len(), 2);
         assert_eq!(a.feed(102), 44);
+        assert_eq!(a.window_size(), 3);
+        assert_eq!(a.len(), 3);
         assert_eq!(a.feed(178), 100);
+        assert_eq!(a.window_size(), 3);
+        assert_eq!(a.len(), 3);
 
         let mut a: MovAvg<i32, i32, 3> = MovAvg::new_init([10, 20, 0], 2);
+        assert_eq!(a.len(), 2);
         assert_eq!(a.feed(102), 44);
         assert_eq!(a.feed(178), 100);
 
         let mut a: MovAvg<u16, u16, 3> = MovAvg::new_init([10, 20, 30], 0);
+        assert_eq!(a.len(), 0);
         assert!(a.try_get().is_err());
         assert_eq!(a.feed(50), 50);
         assert_eq!(a.feed(60), (50 + 60) / 2);
@@ -644,6 +677,7 @@ mod tests {
         assert_eq!(a.feed(80), (60 + 70 + 80) / 3);
 
         let mut a: MovAvg<u16, u16, 3> = MovAvg::new_init([10, 20, 30], 2);
+        assert_eq!(a.len(), 2);
         assert_eq!(a.get(), 15);
         assert_eq!(a.feed(50), (10 + 20 + 50) / 3);
         assert_eq!(a.feed(60), (20 + 50 + 60) / 3);
@@ -652,6 +686,7 @@ mod tests {
     #[test]
     fn test_reset() {
         let mut a: MovAvg<i32, i32, 5> = MovAvg::new();
+        assert_eq!(a.window_size(), 5);
         assert_eq!(a.feed(10), 10);
         assert_eq!(a.feed(20), (10 + 20) / 2);
         assert_eq!(a.feed(2), (10 + 20 + 2) / 3);
@@ -660,7 +695,9 @@ mod tests {
         assert_eq!(a.feed(200), (20 + 2 + 100 + 111 + 200) / 5);
         assert_eq!(a.feed(250), (2 + 100 + 111 + 200 + 250) / 5);
         assert_eq!(a.feed(-25), (100 + 111 + 200 + 250 - 25) / 5);
+        assert_eq!(a.len(), 5);
         a.reset();
+        assert_eq!(a.len(), 0);
         assert_eq!(a.feed(250), 250);
         assert_eq!(a.feed(-25), (250 - 25) / 2);
         assert_eq!(a.feed(100), (250 - 25 + 100) / 3);
@@ -673,10 +710,13 @@ mod tests {
     #[test]
     fn test_get() {
         let mut a: MovAvg<i32, i32, 3> = MovAvg::new_init([10, 20, 0], 2);
+        assert_eq!(a.len(), 2);
         assert_eq!(a.get(), 15);
         assert_eq!(a.feed(102), 44);
+        assert_eq!(a.len(), 3);
         assert_eq!(a.get(), 44);
         assert_eq!(a.feed(178), 100);
+        assert_eq!(a.len(), 3);
         assert_eq!(a.get(), 100);
     }
 
@@ -684,6 +724,7 @@ mod tests {
     fn test_get_empty() {
         let a: MovAvg<i32, i32, 3> = MovAvg::new();
         assert!(a.try_get().is_err());
+        assert_eq!(a.len(), 0);
     }
 
     #[test]
