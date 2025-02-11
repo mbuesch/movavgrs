@@ -4,16 +4,14 @@
 edition             = "2021"
 name                = "movavg"
 description         = "Generic Moving Average calculation"
-version             = "2.4.0"
+version             = "2.5.0"
 authors             = ["Michael Büsch <m@bues.ch>"]
 license             = "MIT OR Apache-2.0"
 readme              = "README.md"
 repository          = "https://bues.ch/cgit/movavgrs.git"
 rust-version        = "1.61"
-
 categories          = ["algorithms", "no-std"]
 keywords            = ["moving", "average"]
-
 build               = "build.rs"
 
 [features]
@@ -22,10 +20,7 @@ std                 = []
 fastfloat           = []
 
 [dependencies]
-
-[dependencies.num-traits]
-version             = "0.2"
-default-features    = false
+num-traits          = { version = "0.2", default-features = false }
 
 [build-dependencies]
 autocfg             = "1"
