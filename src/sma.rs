@@ -237,6 +237,16 @@ where
         self.nr_items
     }
 
+    /// Check if no items have been fed into the Moving Average, yet.
+    ///
+    /// This returns true, if [Self::len] `==0`.
+    ///
+    /// This returns false, if [Self::len] `!=0`.
+    #[inline]
+    pub const fn is_empty(&self) -> bool {
+        self.nr_items == 0
+    }
+
     /// Get the nominal size of the Moving Average window.
     ///
     /// This is always equal to `WINDOW_SIZE`.
@@ -669,12 +679,17 @@ mod tests {
         assert_eq!(a.feed(178), 100);
 
         let mut a: MovAvg<u16, u16, 3> = MovAvg::new_init([10, 20, 30], 0);
+        assert!(a.is_empty());
         assert_eq!(a.len(), 0);
         assert!(a.try_get().is_err());
         assert_eq!(a.feed(50), 50);
+        assert!(!a.is_empty());
         assert_eq!(a.feed(60), (50 + 60) / 2);
+        assert!(!a.is_empty());
         assert_eq!(a.feed(70), (50 + 60 + 70) / 3);
+        assert!(!a.is_empty());
         assert_eq!(a.feed(80), (60 + 70 + 80) / 3);
+        assert!(!a.is_empty());
 
         let mut a: MovAvg<u16, u16, 3> = MovAvg::new_init([10, 20, 30], 2);
         assert_eq!(a.len(), 2);
