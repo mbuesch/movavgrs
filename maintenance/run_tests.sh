@@ -1,13 +1,13 @@
 #!/bin/sh
 set -e
 
-srcdir="$(dirname "$0")"
-[ "$(echo "$srcdir" | cut -c1)" = '/' ] || srcdir="$PWD/$srcdir"
-
+srcdir="$(realpath "$0" | xargs dirname)"
 srcdir="$srcdir/.."
 
-
 cd "$srcdir"
+echo Running clippy...
+cargo clippy -- --deny warnings
+cargo clippy --tests -- --deny warnings
 echo Running std tests...
 cargo test
 echo Running std/fastfloat tests...
