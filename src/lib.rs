@@ -21,9 +21,9 @@
 //! # Cargo Features
 //!
 //! * `std` - If the cargo feature `std` is given, then all features that depend on
-//!           the `std` library are enabled. This feature is enabled by default.
-//!           Use `default-features = false` in your `Cargo.toml` to disable this feature.
-//!           This crate is independent of the `std` library, if this feature is disabled.
+//!   the `std` library are enabled. This feature is enabled by default.
+//!   Use `default-features = false` in your `Cargo.toml` to disable this feature.
+//!   This crate is independent of the `std` library, if this feature is disabled.
 
 #![no_std]
 #[cfg(feature = "std")]

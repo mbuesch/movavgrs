@@ -124,9 +124,9 @@ impl_float_accu!(f32, f64);
 ///
 /// * `T` - The type of the `feed()` input value.
 /// * `A` - The type of the internal accumulator.
-///         This type must be bigger then or equal to `T`.
+///   This type must be bigger then or equal to `T`.
 /// * `WINDOW_SIZE` - The size of the sliding window.
-///                   In number of fed elements.
+///   In number of fed elements.
 #[derive(Clone, Debug)]
 pub struct MovAvg<T, A, const WINDOW_SIZE: usize> {
     buffer: [T; WINDOW_SIZE],
@@ -161,11 +161,11 @@ where
     /// and initialize its internal state.
     ///
     /// * `buffer` - (Partially) pre-populated window buffer. Contains the window values.
-    ///              The length of this buffer defines the Moving Average window size.
+    ///   The length of this buffer defines the Moving Average window size.
     /// * `nr_populated` - The number of pre-populated Moving Average window elements in `buffer`.
-    ///                    `nr_populated` must be less than or equal to `buffer.len()`.
-    ///                    The populated values in `buffer` must begin at index 0.
-    ///                    The values of unpopulated elements in `buffer` does not matter.
+    ///   `nr_populated` must be less than or equal to `buffer.len()`.
+    ///   The populated values in `buffer` must begin at index 0.
+    ///   The values of unpopulated elements in `buffer` does not matter.
     ///
     /// # Panics
     ///
