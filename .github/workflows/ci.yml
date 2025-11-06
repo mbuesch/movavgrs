@@ -8,8 +8,8 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  server_and_client:
-    name: Server and client
+  build_and_test:
+    name: Build and test
     strategy:
       matrix:
         toolchain:
