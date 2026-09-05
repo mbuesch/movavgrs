@@ -33,6 +33,6 @@ mod arith;
 mod sma;
 
 pub use arith::Arith;
-pub use sma::{MovAvg, Accu};
+pub use sma::{Accu, MovAvg};
 
 // vim: ts=4 sw=4 expandtab

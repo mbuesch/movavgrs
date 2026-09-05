@@ -287,7 +287,8 @@ where
         } else {
             self.nr_items + 1
         };
-        let a_nr_items = A::from_usize(new_nr_items);
+        let a_nr_items =
+            A::from_usize(new_nr_items).ok_or("Failed to convert nr_items to accumulator")?;
 
         // Insert the new value into the moving window state.
         // If en error happens later, orig_item has to be restored.
@@ -349,7 +350,8 @@ where
     /// Returns `Err`, if any value conversion fails.
     /// Value conversion does not fail, if the types are big enough to hold the values.
     pub fn try_get(&self) -> Result<T, &str> {
-        let nr_items = A::from_usize(self.nr_items);
+        let nr_items =
+            A::from_usize(self.nr_items).ok_or("Failed to convert nr_items to accumulator")?;
         if nr_items == A::zero() {
             Err("The MovAvg state is empty.")
         } else {

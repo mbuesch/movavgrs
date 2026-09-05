@@ -9,8 +9,13 @@
 
 fn main() {
     let ac = autocfg::new();
+
     ac.emit_has_type("i128");
     println!("cargo:rustc-check-cfg=cfg(has_i128)");
+
+    ac.emit_rustc_version(1, 98);
+    println!("cargo:rustc-check-cfg=cfg(rustc_1_98)");
+
     autocfg::rerun_path("build.rs");
 }
 
