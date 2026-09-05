@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-srcdir="$(realpath "$0" | xargs dirname)"
+srcdir="$(dirname "$(realpath "$0")")"
 srcdir="$srcdir/.."
 
 cd "$srcdir"
