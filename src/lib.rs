@@ -24,6 +24,11 @@
 //!   the `std` library are enabled. This feature is enabled by default.
 //!   Use `default-features = false` in your `Cargo.toml` to disable this feature.
 //!   This crate is independent of the `std` library, if this feature is disabled.
+//!
+//! * `fastfloat` - If the cargo feature `fastfloat` is given, then faster but less
+//!   accurate floating-point operations are enabled.
+//!   Enabling this feature leads to bigger floating point rounding and cancellation errors.
+//!   This feature is disabled by default.
 
 #![no_std]
 #[cfg(feature = "std")]
