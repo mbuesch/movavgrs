@@ -22,7 +22,7 @@ Add this to your Cargo.toml:
 
 ```toml
 [dependencies]
-movavg = "2"
+movavg = "3"
 ```
 
 
@@ -59,7 +59,7 @@ If you want to use movavg without the `std` library (often called `no_std`), the
 
 ```toml
 [dependencies]
-movavg = { version = "2", default-features = false }
+movavg = { version = "3", default-features = false }
 ```
 
 Currently the `no_std` variant supports all functionality that the default `std` variant supports. But that may change in future.
@@ -70,7 +70,7 @@ The `fastfloat` feature can be used to enable much faster, but less accurate flo
 
 ```toml
 [dependencies]
-movavg = { version = "2", features = ["fastfloat"] }
+movavg = { version = "3", features = ["fastfloat"] }
 ```
 
 This feature may also be used together with disabled `std` feature (see `no_std`).
