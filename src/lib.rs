@@ -1,6 +1,6 @@
 // -*- coding: utf-8 -*-
 //
-// Copyright 2021-2025 Michael Büsch <m@bues.ch>
+// Copyright 2021-2026 Michael Büsch <m@bues.ch>
 //
 // Licensed under the Apache License version 2.0
 // or the MIT license, at your option.
@@ -29,8 +29,10 @@
 #[cfg(feature = "std")]
 extern crate std;
 
+mod arith;
 mod sma;
 
-pub use sma::{MovAvg, MovAvgAccu};
+pub use arith::Arith;
+pub use sma::{MovAvg, Accu};
 
 // vim: ts=4 sw=4 expandtab

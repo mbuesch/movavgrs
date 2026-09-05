@@ -1,33 +1,30 @@
 // -*- coding: utf-8 -*-
 //
-// Copyright 2021-2025 Michael Büsch <m@bues.ch>
+// Copyright 2021-2026 Michael Büsch <m@bues.ch>
 //
 // Licensed under the Apache License version 2.0
 // or the MIT license, at your option.
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 //
 
-use num_traits::{Num, NumCast};
+use crate::arith::Arith;
 
 /// Initialize the accumulator from scratch by summing up all items from the window buffer.
 #[inline]
 fn initialize_accu<T, A>(window_buffer: &[T]) -> Result<A, &'static str>
 where
-    T: Num + NumCast + Copy,
-    A: Num + NumCast + Copy,
+    T: Arith + Copy,
+    A: Arith + Copy + TryFrom<T>,
 {
     let mut accu = A::zero();
-    for value in window_buffer {
-        if let Some(value) = A::from(*value) {
-            accu = accu + value;
-        } else {
-            return Err("Failed to cast value to accumulator type.");
-        }
+    for &value in window_buffer {
+        let value = A::try_from(value).map_err(|_| "Failed to cast value to accumulator type.")?;
+        accu = accu.add(value);
     }
     Ok(accu)
 }
 
-/// Internal accumulator calculation trait for integers and floats.
+/// Moving average accumulator calculation.
 ///
 /// This usually does *not* have to be implemented by the library user.
 /// The `movavg` crate implements this trait for all core integers and floats.
@@ -35,7 +32,7 @@ where
 /// `Self` is the accumulator type `A`.
 ///
 /// `T` is the SMA input value type.
-pub trait MovAvgAccu<T>: Copy {
+pub trait Accu<T>: Copy {
     fn recalc_accu(
         self,
         first_value: Self,
@@ -47,14 +44,17 @@ pub trait MovAvgAccu<T>: Copy {
 macro_rules! impl_int_accu {
     ($($t:ty),*) => {
         $(
-            impl<T> MovAvgAccu<T> for $t {
+            impl<T> Accu<T> for $t
+            where
+                Self: Arith + Copy
+            {
                 #[inline]
                 fn recalc_accu(self,
                                first_value: Self,
                                input_value: Self,
                                _window_buffer: &[T]) -> Result<Self, &'static str> {
                     // Subtract the to be removed value from the sum and add the new value.
-                    (self - first_value).checked_add(input_value)
+                    (Arith::sub(self, first_value)).checked_add(input_value)
                         .ok_or("Accumulator type add overflow.")
                 }
             }
@@ -65,9 +65,10 @@ macro_rules! impl_int_accu {
 macro_rules! impl_float_accu {
     ($($t:ty),*) => {
         $(
-            impl<T> MovAvgAccu<T> for $t
+            impl<T> Accu<T> for $t
             where
-                T: Num + NumCast + Copy
+                T: Arith + Copy + TryFrom<T>,
+                Self: TryFrom<T>
             {
                 #[inline]
                 fn recalc_accu(self,
@@ -76,7 +77,7 @@ macro_rules! impl_float_accu {
                                window_buffer: &[T]) -> Result<Self, &'static str> {
                     if cfg!(feature="fastfloat") {
                         // Fast calculation, just like the integer variant.
-                        Ok((self - first_value) + input_value)
+                        Ok((self.sub(first_value)).add(input_value))
                     } else {
                         // Recalculate the accumulator from scratch.
                         initialize_accu(window_buffer)
@@ -137,8 +138,8 @@ pub struct MovAvg<T, A, const WINDOW_SIZE: usize> {
 
 impl<T, A, const WINDOW_SIZE: usize> MovAvg<T, A, WINDOW_SIZE>
 where
-    T: Num + NumCast + Copy,
-    A: Num + NumCast + Copy + MovAvgAccu<T>,
+    T: Arith + Copy + TryFrom<A>,
+    A: Arith + Copy + Accu<T> + TryFrom<T> + PartialEq,
 {
     /// Construct a new Simple Moving Average.
     ///
@@ -271,13 +272,14 @@ where
 
         // Get the first element from the moving window state.
         let first_value = if self.nr_items >= size {
-            A::from(self.buffer[self.index])
-                .ok_or("Failed to cast first value to accumulator type.")?
+            A::try_from(self.buffer[self.index])
+                .map_err(|_| "Failed to cast first value to accumulator type.")?
         } else {
             A::zero()
         };
 
-        let a_value = A::from(value).ok_or("Failed to cast value to accumulator type.")?;
+        let a_value =
+            A::try_from(value).map_err(|_| "Failed to cast value to accumulator type.")?;
 
         // Calculate the new moving window state fill state.
         let new_nr_items = if self.nr_items >= size {
@@ -285,8 +287,7 @@ where
         } else {
             self.nr_items + 1
         };
-        let a_nr_items =
-            A::from(new_nr_items).ok_or("Failed to cast number-of-items to accumulator type.")?;
+        let a_nr_items = A::from_usize(new_nr_items);
 
         // Insert the new value into the moving window state.
         // If en error happens later, orig_item has to be restored.
@@ -300,8 +301,8 @@ where
         {
             Ok(new_accu) => {
                 // Calculate the new average.
-                match T::from(new_accu / a_nr_items) {
-                    Some(avg) => {
+                match T::try_from(new_accu.div(a_nr_items)) {
+                    Ok(avg) => {
                         // Update the state.
                         self.nr_items = new_nr_items;
                         self.index = (self.index + 1) % size;
@@ -310,7 +311,7 @@ where
                         // Return the end result.
                         Ok(avg)
                     }
-                    None => {
+                    Err(_) => {
                         // Restore the original moving window state.
                         self.buffer[self.index] = orig_item;
                         Err("Failed to cast result to item type.")
@@ -348,14 +349,11 @@ where
     /// Returns `Err`, if any value conversion fails.
     /// Value conversion does not fail, if the types are big enough to hold the values.
     pub fn try_get(&self) -> Result<T, &str> {
-        if let Some(nr_items) = A::from(self.nr_items) {
-            if nr_items == A::zero() {
-                Err("The MovAvg state is empty.")
-            } else {
-                T::from(self.accu / nr_items).ok_or("Failed to cast result to item type.")
-            }
+        let nr_items = A::from_usize(self.nr_items);
+        if nr_items == A::zero() {
+            Err("The MovAvg state is empty.")
         } else {
-            Err("Failed to cast number-of-items to accumulator type.")
+            T::try_from(self.accu.div(nr_items)).map_err(|_| "Failed to cast result to item type.")
         }
     }
 
@@ -376,8 +374,8 @@ where
 
 impl<A, T, const WINDOW_SIZE: usize> Default for MovAvg<T, A, WINDOW_SIZE>
 where
-    T: Num + NumCast + Copy,
-    A: Num + NumCast + Copy + MovAvgAccu<T>,
+    T: Arith + Copy + TryFrom<A>,
+    A: Arith + Copy + Accu<T> + TryFrom<T> + PartialEq,
 {
     #[inline]
     fn default() -> Self {
