@@ -228,7 +228,7 @@ where
 
     /// Get the current length of the Moving Average window.
     ///
-    /// This length is in the range of `0..WINDOW_SIZE`.
+    /// This length is in the range of `0..=WINDOW_SIZE`.
     /// If the length is less than `WINDOW_SIZE`, then the Moving Average window
     /// has not been fully populated, yet.
     ///
@@ -246,6 +246,15 @@ where
     #[inline]
     pub const fn is_empty(&self) -> bool {
         self.nr_items == 0
+    }
+
+    /// Check if the Moving Average window is fully populated.
+    ///
+    /// This returns true, if [Self::len] `== WINDOW_SIZE`.
+    ///
+    /// This returns false, if [Self::len] `< WINDOW_SIZE`.
+    pub const fn is_filled(&self) -> bool {
+        self.len() >= self.window_size()
     }
 
     /// Get the nominal size of the Moving Average window.
@@ -680,16 +689,21 @@ mod tests {
 
         let mut a: MovAvg<u16, u16, 3> = MovAvg::new_init([10, 20, 30], 0);
         assert!(a.is_empty());
+        assert!(!a.is_filled());
         assert_eq!(a.len(), 0);
         assert!(a.try_get().is_err());
         assert_eq!(a.feed(50), 50);
         assert!(!a.is_empty());
+        assert!(!a.is_filled());
         assert_eq!(a.feed(60), (50 + 60) / 2);
         assert!(!a.is_empty());
+        assert!(!a.is_filled());
         assert_eq!(a.feed(70), (50 + 60 + 70) / 3);
         assert!(!a.is_empty());
+        assert!(a.is_filled());
         assert_eq!(a.feed(80), (60 + 70 + 80) / 3);
         assert!(!a.is_empty());
+        assert!(a.is_filled());
 
         let mut a: MovAvg<u16, u16, 3> = MovAvg::new_init([10, 20, 30], 2);
         assert_eq!(a.len(), 2);
